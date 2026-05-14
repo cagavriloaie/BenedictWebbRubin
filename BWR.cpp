@@ -11,8 +11,8 @@
 //     • ecuației de stare Benedict-Webb-Rubin (BWR) pentru densitate;
 //     • modelului Chapman-Enskog corectat cu termenul de densitate ridicată
 //       pentru viscozitate;
-//     • metodei ISO 5167 / STAS 7347-90 pentru calculul debitului prin
-//       dispozitive de strangulare.
+//     • metodei ISO 5167-2:2003 (ecuația Reader-Harris/Gallagher)
+//       pentru calculul debitului prin dispozitive de strangulare.
 //
 // INTRĂRI
 //   1. Compoziția amestecului — fracții molare pentru fiecare din cei
@@ -60,10 +60,9 @@
 //   la fiecare iterație în funcție de Re și β.
 //
 // REFERINȚE
-//   • STAS 7347-90 — Măsurarea debitului fluidelor prin diafragme,
-//     ajutaje și tuburi Venturi
-//   • ISO 5167-1:2003 — Measurement of fluid flow by means of pressure
-//     differential devices
+//   • ISO 5167-2:2003 — Orifice plates (ecuația Reader-Harris/Gallagher)
+//   • ISO 5167-3:2003 — Nozzles and Venturi nozzles
+//   • ISO 5167-4:2003 — Venturi tubes
 //   • Benedict, Webb, Rubin (1940) — J. Chem. Phys. 8, 334
 // =============================================================================
 
@@ -317,8 +316,11 @@ int main() {
       "  ║                                                        ║\n"
       "  ║   ▸ Ecuație de stare   —  Benedict · Webb · Rubin      ║\n"
       "  ║   ▸ Viscozitate        —  Chapman-Enskog (corectat)    ║\n"
-      "  ║   ▸ Debit gaze         —  ISO 5167 / STAS 7347-90      ║\n"
-      "  ║   ▸ 36 componenți      -  9 dispozitive de strangulare ║\n"
+      "  ║   ▸ Debit gaze         —  ISO 5167-2:2003              ║\n"
+      "  ║   ▸ Coef. debit C      —  Reader-Harris / Gallagher    ║\n"
+      "  ║   ▸ 36 componenți      —  9 dispozitive de strangulare ║\n"
+      "  ║   ▸ Condiții normale   —  0°C / 101.325 kPa (Nm³/h)   ║\n"
+      "  ║   ▸ Condiții standard  —  15°C / 101.325 kPa (Sm³/h)  ║\n"
       "  ║                                                        ║\n"
       "  ╚════════════════════════════════════════════════════════╝\n"
       "\n");

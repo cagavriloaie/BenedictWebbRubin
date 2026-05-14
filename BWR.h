@@ -117,8 +117,8 @@ constexpr bool IsDiaphragm(TipDispozitiv tip) {
          static_cast<int>(TipDispozitiv::kDiafragmaDD2);
 }
 
-// Calculează coeficientul de debit C [-] al dispozitivului de strangulare
-// conform formulelor ISO 5167 / STAS 7347-90.
+// Calculează coeficientul de debit C [-] al dispozitivului de strangulare.
+// Pentru diafragme: ecuația Reader-Harris/Gallagher (ISO 5167-2:2003, §8.3.2).
 // d_m  — diametrul interior al conductei la locul de măsurare [m]
 // beta — raportul de strangulare β = d/D [-]
 // re   — numărul Reynolds în conductă (valoarea curentă din iterație) [-]
@@ -126,46 +126,44 @@ float DischargeCoefficient(TipDispozitiv tip, float d_m, float beta, float re) {
   float coef = 0.0f;
   switch (tip) {
     case TipDispozitiv::kDiafragmaUnghi:
-      coef = 0.5959f + 0.0312f * std::pow(beta, 2.1)
-           - 0.184f * std::pow(beta, 8)
-           + 0.0029f * std::pow(beta, 2.5)
-           * std::pow(kReynoldsIsoRef / re, 0.75);
-      break;
     case TipDispozitiv::kDiafragmaFlansa:
-      if (1000 * d_m > 58.62f) {
-        coef = 0.5959f + 0.0312f * std::pow(beta, 2.1)
-             - 0.184f * std::pow(beta, 8)
-             + 0.002286f / d_m * std::pow(beta, 4)
-             / (1 - std::pow(beta, 4));
-        coef = coef - 0.00085598f / d_m * std::pow(beta, 3)
-             + 0.0029f * std::pow(beta, 2.5)
-             * std::pow(kReynoldsIsoRef / re, 0.75);
+    case TipDispozitiv::kDiafragmaDD2: {
+      // Poziția prizelor de presiune: L1 amonte, L2p aval (adimensionalizate cu D)
+      float L1, L2p;
+      if (tip == TipDispozitiv::kDiafragmaUnghi) {
+        L1 = 0.0f;    L2p = 0.0f;            // prize în unghi
+      } else if (tip == TipDispozitiv::kDiafragmaFlansa) {
+        L1 = 0.0254f / d_m;  L2p = L1;       // prize la flanșă: 25,4 mm / D
       } else {
-        coef = 0.5959f + 0.0312f * std::pow(beta, 2.1)
-             - 0.184f * std::pow(beta, 8)
-             + 0.039f * std::pow(beta, 4) / (1 - std::pow(beta, 4));
-        coef = coef - 0.039f * std::pow(beta, 3)
-             + 0.0029f * std::pow(beta, 2.5)
-             * std::pow(kReynoldsIsoRef / re, 0.75);
+        L1 = 1.0f;    L2p = 0.47f;           // prize la D și D/2
       }
+      float A  = std::pow(19000.0f * beta / re, 0.8f);
+      float M2 = 2.0f * L2p / (1.0f - beta);
+      coef = 0.5961f
+           + 0.0261f * beta * beta
+           - 0.216f  * std::pow(beta, 8.0f)
+           + 0.000521f * std::pow(1.0e6f * beta / re, 0.7f)
+           + (0.0188f + 0.0063f * A)
+             * std::pow(beta, 3.5f) * std::pow(1.0e6f / re, 0.3f)
+           + (0.043f + 0.080f * std::exp(-10.0f * L1)
+                     - 0.123f * std::exp( -7.0f * L1))
+             * (1.0f - 0.11f * A) * std::pow(beta, 4.0f)
+             / (1.0f - std::pow(beta, 4.0f))
+           - 0.031f * (M2 - 0.8f * std::pow(M2, 1.1f))
+             * std::pow(beta, 1.3f);
+      if (d_m < 0.07112f)  // corecție pentru D < 71,12 mm
+        coef += 0.011f * (0.75f - beta) * (2.8f - d_m / 0.0254f);
       break;
-    case TipDispozitiv::kDiafragmaDD2:
-      coef = 0.5959f + 0.0312f * std::pow(beta, 2.1)
-           - 0.184f * std::pow(beta, 8)
-           + 0.039f * std::pow(beta, 4) / (1 - std::pow(beta, 4))
-           - 0.015839f * std::pow(beta, 3);
-      coef = coef + 0.0029f * std::pow(beta, 2.5)
-           * std::pow(kReynoldsIsoRef / re, 0.75);
-      break;
+    }
     case TipDispozitiv::kAjutajIsa:
-      coef = 0.99f - 0.2262f * std::pow(beta, 4.1)
-           + (0.000215f - 0.001125f * beta + 0.00249f * std::pow(beta, 4.7))
-           * std::pow(kReynoldsIsoRef / re, 1.15);
+      coef = 0.99f - 0.2262f * std::pow(beta, 4.1f)
+           + (0.000215f - 0.001125f * beta + 0.00249f * std::pow(beta, 4.7f))
+           * std::pow(kReynoldsIsoRef / re, 1.15f);
       break;
     case TipDispozitiv::kAjutajRazaLunga:
       coef = 0.9965f
-           - 0.00653f * std::pow(beta, 0.5)
-           * std::pow(kReynoldsIsoRef / re, 0.5);
+           - 0.00653f * std::pow(beta, 0.5f)
+           * std::pow(kReynoldsIsoRef / re, 0.5f);
       break;
     case TipDispozitiv::kVenturiBrut:
       coef = 0.984f;
@@ -177,7 +175,7 @@ float DischargeCoefficient(TipDispozitiv tip, float d_m, float beta, float re) {
       coef = 0.985f;
       break;
     case TipDispozitiv::kAjutajVenturi:
-      coef = 0.9858f - 0.196f * std::pow(beta, 4.5);
+      coef = 0.9858f - 0.196f * std::pow(beta, 4.5f);
       break;
   }
   return coef;
@@ -193,7 +191,7 @@ float VelocityCoefficient(TipDispozitiv tip, float d_m, float beta, float re) {
 
 // Afișează pe consolă mesajul de eroare corespunzător codului de eroare.
 // Parametrul red este folosit doar pentru ErrorCode::kReynolds, pentru a
-// indica valoarea numerică a lui Re care a depășit domeniul STAS 7347-90.
+// indica valoarea numerică a lui Re care a depășit domeniul ISO 5167.
 void PrintError(ErrorCode code, float red) {
   std::printf("%s", kBoldRed);
   switch (code) {
@@ -216,7 +214,7 @@ void PrintError(ErrorCode code, float red) {
 }
 
 // Calculează debitul masic Qm [kg/s] prin dispozitivul de strangulare.
-// Înainte de calcul validează domeniile STAS 7347-90 pentru D, d, β și Re.
+// Înainte de calcul validează domeniile ISO 5167 pentru D, d, β și Re.
 // Algoritmul iterează corecția cu Re până la |Qm_k − Qm_{k-1}| < kReynoldsTolerance.
 // Returnează 0.0f și afișează eroarea dacă vreun parametru depășește domeniul.
 // dp     — presiunea diferențială Δp [kPa]
