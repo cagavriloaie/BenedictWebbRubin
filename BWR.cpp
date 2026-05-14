@@ -117,7 +117,7 @@ static void ExitApp() {
   std::exit(0);
 }
 
-static bool ReadFloat(double* val) {
+static void ReadDouble(double* val) {
   char buf[64] = {};
   int pos = 0;
   for (;;) {
@@ -130,13 +130,12 @@ static bool ReadFloat(double* val) {
       std::printf("\b \b"); std::fflush(stdout);
       continue;
     }
-    if (pos < 62 && (ch >= '0' && ch <= '9' || ch == '.' || ch == '-')) {
+    if (pos < 62 && (ch >= '0' && ch <= '9' || ch == '.' || (ch == '-' && pos == 0))) {
       buf[pos++] = static_cast<char>(ch);
       std::printf("%c", ch); std::fflush(stdout);
     }
   }
-  *val = (pos > 0) ? static_cast<double>(std::atof(buf)) : 0.0;
-  return true;
+  *val = (pos > 0) ? std::atof(buf) : 0.0;
 }
 
 static bool ReadInt(int* val) {
@@ -187,11 +186,11 @@ static void PrintComposition(const double* x) {
       "Hidrogen sulfurat", "Heliu", "Argon", "Azot", "Oxigen",
       "Dioxid de carbon", "Aer", "Etilen\xC4\x83", "Propilen\xC4\x83", "Amoniac", "Acetilen\xC4\x83"
   };
-  std::printf("\n%s    Compoziția amestecului (fracții molare):%s\n", kBoldCyan, kReset);
+  std::printf("\n%s    Compoziția amestecului (fracții molare):%s\n", kBoldWhite, kReset);
   for (int i = 1; i <= kNumComponents; i++) {
     const char* name = kNames[i];
     int visualLen = (int)strlen(name) - Utf8ExtraBytes(name);
-    std::printf("%s    %s", kCyan, name);
+    std::printf("%s    %s", kBoldWhite, name);
     for (int j = visualLen; j < 25; j++) std::putchar(' ');
     std::printf(": %s%.8f%s\n", kBoldGreen, x[i], kReset);
   }
@@ -339,7 +338,7 @@ int main() {
     if (cf) {
       std::fclose(cf);
       std::printf("%s\n  Există o compoziție salvată. O refolosiți? [d/n]: %s",
-                  kCyan, kReset);
+                  kBoldWhite, kReset);
       if (AskYesNo()) {
         if (LoadComposition(x)) {
           comp_loaded = true;
@@ -356,43 +355,43 @@ int main() {
     double sum;
     do {
       std::printf("\n%s Compoziția în fracții molare a amestecului de gaze:%s\n",
-                  kBoldCyan, kReset);
-      std::printf("%s  Metan                 : %s", kCyan, kReset); ReadFloat(&x[1]);
-      std::printf("%s  Etan                  : %s", kCyan, kReset); ReadFloat(&x[2]);
-      std::printf("%s  Propan                : %s", kCyan, kReset); ReadFloat(&x[3]);
-      std::printf("%s  Izobutan              : %s", kCyan, kReset); ReadFloat(&x[4]);
-      std::printf("%s  N-butan               : %s", kCyan, kReset); ReadFloat(&x[5]);
-      std::printf("%s  Neopentan             : %s", kCyan, kReset); ReadFloat(&x[6]);
-      std::printf("%s  Izopentan             : %s", kCyan, kReset); ReadFloat(&x[7]);
-      std::printf("%s  N-pentan              : %s", kCyan, kReset); ReadFloat(&x[8]);
-      std::printf("%s  2,2-dimetilbutan      : %s", kCyan, kReset); ReadFloat(&x[9]);
-      std::printf("%s  2,3-dimetilbutan      : %s", kCyan, kReset); ReadFloat(&x[10]);
-      std::printf("%s  3-metilpentan         : %s", kCyan, kReset); ReadFloat(&x[11]);
-      std::printf("%s  2-metilpentan         : %s", kCyan, kReset); ReadFloat(&x[12]);
-      std::printf("%s  N-hexan               : %s", kCyan, kReset); ReadFloat(&x[13]);
-      std::printf("%s  2,4-dimetilpentan     : %s", kCyan, kReset); ReadFloat(&x[14]);
-      std::printf("%s  2,2,3-trimetilbutan   : %s", kCyan, kReset); ReadFloat(&x[15]);
-      std::printf("%s  2-metilhexan          : %s", kCyan, kReset); ReadFloat(&x[16]);
-      std::printf("%s  3-metilhexan          : %s", kCyan, kReset); ReadFloat(&x[17]);
-      std::printf("%s  3-etilpentan          : %s", kCyan, kReset); ReadFloat(&x[18]);
-      std::printf("%s  N-heptan              : %s", kCyan, kReset); ReadFloat(&x[19]);
-      std::printf("%s  2,2,3-trimetilpentan  : %s", kCyan, kReset); ReadFloat(&x[20]);
-      std::printf("%s  N-octan               : %s", kCyan, kReset); ReadFloat(&x[21]);
-      std::printf("%s  Benzen                : %s", kCyan, kReset); ReadFloat(&x[22]);
-      std::printf("%s  Toluen                : %s", kCyan, kReset); ReadFloat(&x[23]);
-      std::printf("%s  Hidrogen              : %s", kCyan, kReset); ReadFloat(&x[24]);
-      std::printf("%s  Monoxid de carbon     : %s", kCyan, kReset); ReadFloat(&x[25]);
-      std::printf("%s  Hidrogen sulfurat     : %s", kCyan, kReset); ReadFloat(&x[26]);
-      std::printf("%s  Heliu                 : %s", kCyan, kReset); ReadFloat(&x[27]);
-      std::printf("%s  Argon                 : %s", kCyan, kReset); ReadFloat(&x[28]);
-      std::printf("%s  Azot                  : %s", kCyan, kReset); ReadFloat(&x[29]);
-      std::printf("%s  Oxigen                : %s", kCyan, kReset); ReadFloat(&x[30]);
-      std::printf("%s  Dioxid de carbon      : %s", kCyan, kReset); ReadFloat(&x[31]);
-      std::printf("%s  Aer                   : %s", kCyan, kReset); ReadFloat(&x[32]);
-      std::printf("%s  Etilenă               : %s", kCyan, kReset); ReadFloat(&x[33]);
-      std::printf("%s  Propilenă             : %s", kCyan, kReset); ReadFloat(&x[34]);
-      std::printf("%s  Amoniac               : %s", kCyan, kReset); ReadFloat(&x[35]);
-      std::printf("%s  Acetilenă             : %s", kCyan, kReset); ReadFloat(&x[36]);
+                  kBoldWhite, kReset);
+      std::printf("%s  Metan                 : %s", kBoldWhite, kReset); ReadDouble(&x[1]);
+      std::printf("%s  Etan                  : %s", kBoldWhite, kReset); ReadDouble(&x[2]);
+      std::printf("%s  Propan                : %s", kBoldWhite, kReset); ReadDouble(&x[3]);
+      std::printf("%s  Izobutan              : %s", kBoldWhite, kReset); ReadDouble(&x[4]);
+      std::printf("%s  N-butan               : %s", kBoldWhite, kReset); ReadDouble(&x[5]);
+      std::printf("%s  Neopentan             : %s", kBoldWhite, kReset); ReadDouble(&x[6]);
+      std::printf("%s  Izopentan             : %s", kBoldWhite, kReset); ReadDouble(&x[7]);
+      std::printf("%s  N-pentan              : %s", kBoldWhite, kReset); ReadDouble(&x[8]);
+      std::printf("%s  2,2-dimetilbutan      : %s", kBoldWhite, kReset); ReadDouble(&x[9]);
+      std::printf("%s  2,3-dimetilbutan      : %s", kBoldWhite, kReset); ReadDouble(&x[10]);
+      std::printf("%s  3-metilpentan         : %s", kBoldWhite, kReset); ReadDouble(&x[11]);
+      std::printf("%s  2-metilpentan         : %s", kBoldWhite, kReset); ReadDouble(&x[12]);
+      std::printf("%s  N-hexan               : %s", kBoldWhite, kReset); ReadDouble(&x[13]);
+      std::printf("%s  2,4-dimetilpentan     : %s", kBoldWhite, kReset); ReadDouble(&x[14]);
+      std::printf("%s  2,2,3-trimetilbutan   : %s", kBoldWhite, kReset); ReadDouble(&x[15]);
+      std::printf("%s  2-metilhexan          : %s", kBoldWhite, kReset); ReadDouble(&x[16]);
+      std::printf("%s  3-metilhexan          : %s", kBoldWhite, kReset); ReadDouble(&x[17]);
+      std::printf("%s  3-etilpentan          : %s", kBoldWhite, kReset); ReadDouble(&x[18]);
+      std::printf("%s  N-heptan              : %s", kBoldWhite, kReset); ReadDouble(&x[19]);
+      std::printf("%s  2,2,3-trimetilpentan  : %s", kBoldWhite, kReset); ReadDouble(&x[20]);
+      std::printf("%s  N-octan               : %s", kBoldWhite, kReset); ReadDouble(&x[21]);
+      std::printf("%s  Benzen                : %s", kBoldWhite, kReset); ReadDouble(&x[22]);
+      std::printf("%s  Toluen                : %s", kBoldWhite, kReset); ReadDouble(&x[23]);
+      std::printf("%s  Hidrogen              : %s", kBoldWhite, kReset); ReadDouble(&x[24]);
+      std::printf("%s  Monoxid de carbon     : %s", kBoldWhite, kReset); ReadDouble(&x[25]);
+      std::printf("%s  Hidrogen sulfurat     : %s", kBoldWhite, kReset); ReadDouble(&x[26]);
+      std::printf("%s  Heliu                 : %s", kBoldWhite, kReset); ReadDouble(&x[27]);
+      std::printf("%s  Argon                 : %s", kBoldWhite, kReset); ReadDouble(&x[28]);
+      std::printf("%s  Azot                  : %s", kBoldWhite, kReset); ReadDouble(&x[29]);
+      std::printf("%s  Oxigen                : %s", kBoldWhite, kReset); ReadDouble(&x[30]);
+      std::printf("%s  Dioxid de carbon      : %s", kBoldWhite, kReset); ReadDouble(&x[31]);
+      std::printf("%s  Aer                   : %s", kBoldWhite, kReset); ReadDouble(&x[32]);
+      std::printf("%s  Etilenă               : %s", kBoldWhite, kReset); ReadDouble(&x[33]);
+      std::printf("%s  Propilenă             : %s", kBoldWhite, kReset); ReadDouble(&x[34]);
+      std::printf("%s  Amoniac               : %s", kBoldWhite, kReset); ReadDouble(&x[35]);
+      std::printf("%s  Acetilenă             : %s", kBoldWhite, kReset); ReadDouble(&x[36]);
 
       sum = 0.0;
       for (int i = 1; i <= kNumComponents; i++) sum += x[i];
@@ -408,7 +407,7 @@ int main() {
       }
     } while (std::fabs(sum - 1.0) > kSumTolerance);
 
-    std::printf("%s\n  Salvați compoziția? [d/n]: %s", kCyan, kReset);
+    std::printf("%s\n  Salvați compoziția? [d/n]: %s", kBoldWhite, kReset);
     if (AskYesNo()) SaveComposition(x);
   }
 
@@ -470,30 +469,31 @@ int main() {
   static constexpr int kNRef = 5;
 
   std::printf("\n%s  Condi\xC8\x9Bii de referin\xC8\x9B\xC4\x83 volumetric\xC4\x83:%s\n\n",
-              kBoldCyan, kReset);
-  std::printf("%s  1.  Rom\xC3\xA2nia / UE  (DIN 1343)        \xe2\x80\x94   0\xC2\xB0""C \xC8\x99i 15\xC2\xB0""C / 101.325 kPa  [Nm\xC2\xB3/h] \xC8\x99i [Sm\xC2\xB3/h]%s\n", kCyan, kReset);
-  std::printf("%s  2.  ISO 13443  /  UK / Italia       \xe2\x80\x94  15\xC2\xB0""C / 101.325 kPa  [Sm\xC2\xB3/h]%s\n",                                                                    kCyan, kReset);
-  std::printf("%s  3.  SUA \xe2\x80\x94 AGA-3  (60\xC2\xB0""F)             \xe2\x80\x94  15.56\xC2\xB0""C / 101.325 kPa  [Sm\xC2\xB3/h]%s\n",                                           kCyan, kReset);
-  std::printf("%s  4.  Rusia \xe2\x80\x94 GOST 30319-1            \xe2\x80\x94  20\xC2\xB0""C / 101.325 kPa  [m\xC2\xB3/h]%s\n",                                                         kCyan, kReset);
-  std::printf("%s  5.  Personalizat                    \xe2\x80\x94  T [\xC2\xB0""C] introdus manual  [m\xC2\xB3/h]%s\n",                                                                 kCyan, kReset);
+              kBoldWhite, kReset);
+  std::printf("%s  1.  Rom\xC3\xA2nia / UE  (DIN 1343)        \xe2\x80\x94   0\xC2\xB0""C \xC8\x99i 15\xC2\xB0""C / 101.325 kPa  [Nm\xC2\xB3/h] \xC8\x99i [Sm\xC2\xB3/h]%s\n", kBoldWhite, kReset);
+  std::printf("%s  2.  ISO 13443  /  UK / Italia       \xe2\x80\x94  15\xC2\xB0""C / 101.325 kPa  [Sm\xC2\xB3/h]%s\n",                                                                    kBoldWhite, kReset);
+  std::printf("%s  3.  SUA \xe2\x80\x94 AGA-3  (60\xC2\xB0""F)             \xe2\x80\x94  15.56\xC2\xB0""C / 101.325 kPa  [Sm\xC2\xB3/h]%s\n",                                           kBoldWhite, kReset);
+  std::printf("%s  4.  Rusia \xe2\x80\x94 GOST 30319-1            \xe2\x80\x94  20\xC2\xB0""C / 101.325 kPa  [m\xC2\xB3/h]%s\n",                                                         kBoldWhite, kReset);
+  std::printf("%s  5.  Personalizat                    \xe2\x80\x94  T [\xC2\xB0""C] introdus manual  [m\xC2\xB3/h]%s\n",                                                                 kBoldWhite, kReset);
 
   int ref_sel = 0;
   do {
-    std::printf("%s\n  Selecta\xC8\x9Bi (1\xe2\x80\x93" "5)  > %s", kMagenta, kReset);
+    std::printf("%s\n  Selecta\xC8\x9Bi (1\xe2\x80\x93" "5)  > ", kBoldWhite);
     ReadInt(&ref_sel);
+    std::printf("%s", kReset);
   } while (ref_sel < 1 || ref_sel > kNRef);
 
   CountryRef ref = kRefTable[ref_sel - 1];
   if (ref_sel == kNRef) {
-    std::printf("%s  Temperatura de referin\xC8\x9B\xC4\x83 [\xC2\xB0""C]  : %s", kBoldCyan, kReset);
-    ReadFloat(&ref.t[0]);
+    std::printf("%s  Temperatura de referin\xC8\x9B\xC4\x83 [\xC2\xB0""C]  : %s", kBoldWhite, kReset);
+    ReadDouble(&ref.t[0]);
   }
 
   double ror_ref[2] = {};
   for (int i = 0; i < ref.n; i++) {
     ror_ref[i] = CalcDensity(ref.t[i], 1, bwr);
     std::printf("%s  Densitatea la %5.2f\xC2\xB0""C / 101.325 kPa     :%s %s%f%s %s[kg/m\xC2\xB3]%s\n",
-                kBoldCyan, ref.t[i], kReset, kBoldGreen, ror_ref[i], kReset, kCyan, kReset);
+                kBoldWhite, ref.t[i], kReset, kBoldGreen, ror_ref[i], kReset, kBoldWhite, kReset);
   }
 
   // ── Buclă exterioară: selecția dispozitivului de măsurare ─────────────────
@@ -511,10 +511,10 @@ int main() {
             "    Dispozitiv  : %s\n"
             "    D intern    : %g mm\n"
             "    D orificiu  : %g mm%s\n",
-            kCyan,
+            kBoldWhite,
             TipName(static_cast<TipDispozitiv>(sv_tip)),
             sv_d_int, sv_d_orif, kReset);
-        std::printf("%s  Refolosiți configurația? [d/n]: %s", kCyan, kReset);
+        std::printf("%s  Refolosiți configurația? [d/n]: %s", kBoldWhite, kReset);
         if (AskYesNo()) {
           tip_raw = sv_tip;
           d_int   = sv_d_int;
@@ -526,16 +526,17 @@ int main() {
 
     // Selectare manuală dispozitiv
     do {
-      std::printf("\n%s%s%s", kMagenta, kTipDisp, kReset);
+      std::printf("\n%s%s", kBoldWhite, kTipDisp);
       ReadInt(&tip_raw);
+      std::printf("%s", kReset);
       if (tip_raw < kTipMin || tip_raw > kTipMax)
         std::printf("%s\n  Dispozitiv de strangulare nedisponibil!%s\n", kBoldRed, kReset);
     } while (tip_raw < kTipMin || tip_raw > kTipMax);
 
-    std::printf("\n%s  D intern (20°C)   [mm] : %s", kBoldCyan, kReset); ReadFloat(&d_int);
-    std::printf(  "%s  D orificiu (20°C) [mm] : %s", kBoldCyan, kReset); ReadFloat(&d_orif);
+    std::printf("\n%s  D intern (20°C)   [mm] : %s", kBoldWhite, kReset); ReadDouble(&d_int);
+    std::printf(  "%s  D orificiu (20°C) [mm] : %s", kBoldWhite, kReset); ReadDouble(&d_orif);
 
-    std::printf("%s\n  Salvați configurația? [d/n]: %s", kCyan, kReset);
+    std::printf("%s\n  Salvați configurația? [d/n]: %s", kBoldWhite, kReset);
     if (AskYesNo()) SaveConfig(tip_raw, d_int, d_orif);
 
     run_inner:;
@@ -544,18 +545,18 @@ int main() {
     // Buclă interioară: calcul pentru condiții diferite T/P cu același dispozitiv
     for (;;) {
       double temperatura, presiunea, presiunea_dif;
-      std::printf("\n\n%s  Temperatura [°C]             : %s", kCyan, kReset);
-      ReadFloat(&temperatura);
-      std::printf("%s  Presiunea [kPa]              : %s", kCyan, kReset);
-      ReadFloat(&presiunea);
+      std::printf("\n\n%s  Temperatura [°C]             : %s", kBoldWhite, kReset);
+      ReadDouble(&temperatura);
+      std::printf("%s  Presiunea [kPa]              : %s", kBoldWhite, kReset);
+      ReadDouble(&presiunea);
       if (presiunea <= 0) {
         std::printf("\033[2J\033[H");
         std::printf("%s\n  ELCOST Impex  —  BWR Gas Flow Calculator  v2.0/2026%s\n",
                     kBoldYellow, kReset);
         return 0;
       }
-      std::printf("%s  Presiunea diferențială [kPa] : %s", kCyan, kReset);
-      ReadFloat(&presiunea_dif);
+      std::printf("%s  Presiunea diferențială [kPa] : %s", kBoldWhite, kReset);
+      ReadDouble(&presiunea_dif);
       std::printf("  %c\n", 7);
 
       double ro = CalcDensity(temperatura, presiunea / kKpaPerAtm, bwr);

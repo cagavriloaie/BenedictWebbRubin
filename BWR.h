@@ -50,12 +50,10 @@ constexpr double kSumTolerance      = 1.0e-3;  // tolerance for Σx = 1 check
 // ANSI color codes
 constexpr const char* kReset      = "\033[0m";
 constexpr const char* kBoldYellow = "\033[1;33m";
-constexpr const char* kBoldCyan   = "\033[1;36m";
+constexpr const char* kBoldWhite  = "\033[1;37m";
 constexpr const char* kBoldGreen  = "\033[1;32m";
 constexpr const char* kBoldRed    = "\033[1;31m";
-constexpr const char* kCyan       = "\033[36m";
 constexpr const char* kYellow     = "\033[33m";
-constexpr const char* kMagenta    = "\033[35m";
 
 constexpr int kTipMin =
     static_cast<int>(TipDispozitiv::kDiafragmaUnghi);
