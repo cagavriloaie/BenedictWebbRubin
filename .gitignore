@@ -1,0 +1,9 @@
+# Visual Studio
+.vs/
+
+# Build output
+out/
+
+# Compiled binaries
+installer/*.exe
+installer/*.msi
