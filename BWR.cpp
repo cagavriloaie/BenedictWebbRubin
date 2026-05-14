@@ -138,7 +138,7 @@ static void ReadDouble(double* val) {
   *val = (pos > 0) ? std::atof(buf) : 0.0;
 }
 
-static bool ReadInt(int* val) {
+static void ReadInt(int* val) {
   char buf[32] = {};
   int pos = 0;
   for (;;) {
@@ -157,7 +157,6 @@ static bool ReadInt(int* val) {
     }
   }
   *val = (pos > 0) ? std::atoi(buf) : 0;
-  return true;
 }
 
 static bool AskYesNo() {
@@ -325,6 +324,8 @@ int main() {
       "  ║   ▸ 36 componenți      —  9 dispozitive de strangulare ║\n"
       "  ║   ▸ Ref. volumetrice   —  selectabile per \xC8\x9B" "ar\xC4\x83         \xe2\x95\x91\n"
       "  ║                                                        ║\n"
+      "  ╠════════════════════════════════════════════════════════╣\n"
+      "  ║   https://github.com/cagavriloaie/BenedictWebbRubin   ║\n"
       "  ╚════════════════════════════════════════════════════════╝\n"
       "\n");
   std::printf("%s", kReset);
