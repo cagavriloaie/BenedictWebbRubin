@@ -452,6 +452,9 @@ int main() {
                  / std::pow(bwr.molar_mass, 0.5)
                  / std::pow(pcam, 2.0/3.0);
 
+  std::printf("  Masa molar\xC4\x83 a amestecului             : %s%8.4f%s [g/mol]\n",
+              kBoldGreen, bwr.molar_mass, kReset);
+
   static const CountryRef kRefTable[] = {
     {"Rom\xC3\xA2nia / UE  (DIN 1343)",  2, { 0.0,  15.0  }, {"Nm\xC2\xB3/h", "Sm\xC2\xB3/h"}},
     {"ISO 13443  /  UK / Italia",         1, {15.0,   0.0  }, {"Sm\xC2\xB3/h", ""}},
@@ -593,7 +596,7 @@ int main() {
       std::printf("  %c\n", 7);
 
       double ro = CalcDensity(temperatura, presiunea / kKpaPerAtm, bwr);
-      std::printf("  Densitatea (t,p)                       : %s%f%s [kg/m³]\n",
+      std::printf("  Densitatea (t,p)                       : %s%8.4f%s [kg/m\xC2\xB3]\n",
                   kBoldGreen, ro, kReset);
 
       double roc_red = ro / roc_crit;
@@ -608,7 +611,7 @@ int main() {
       eta += 10.8e-8 / csi
            * std::pow(std::exp(1.439 * roc_red) - std::exp(-1.111 * roc_red),
                       1.358);
-      std::printf("  Viscozitatea dinamică (t,p)            : %s%f%s [μPa·s]\n",
+      std::printf("  Viscozitatea dinamic\xC4\x83 (t,p)            : %s%8.4f%s [\xC2\xB5Pa\xC2\xB7s]\n",
                   kBoldGreen, eta * 1000000, kReset);
 
       FlowResult flow;
@@ -629,6 +632,10 @@ int main() {
                   kBoldGreen, flow.viteza, kReset);
       std::printf("  Pierderea de presiune prin strangulare : %s%.2f%s [kPa]\n",
                   kBoldGreen, flow.pierderea, kReset);
+      std::printf("  Raportul de str\xC3\xA2ngulare \xCE\xB2              : %s%.4f%s [-]\n",
+                  kBoldGreen, flow.beta, kReset);
+      std::printf("  Num\xC4\x83rul Reynolds                       : %s%.4g%s [-]\n",
+                  kBoldGreen, flow.reynolds, kReset);
     }
   }
 }

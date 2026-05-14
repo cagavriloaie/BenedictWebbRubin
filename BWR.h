@@ -106,6 +106,8 @@ struct BwrConst {
 struct FlowResult {
   double viteza    = 0.0;  // viteza medie a gazului în conductă [m/s]
   double pierderea = 0.0;  // pierderea de presiune prin strangulare [kPa]
+  double beta      = 0.0;  // raportul de strangulare d/D la temperatura de măsurare [-]
+  double reynolds  = 0.0;  // numărul Reynolds după iterație [-]
 };
 
 // Condiții de referință volumetrică (un preset = 1 sau 2 perechi T/101.325 kPa)
@@ -354,6 +356,8 @@ double CalcMassFlow(double dp, double p, double t,
 
   out->viteza    = 4 * qn / kPi / d_i / d_i / ro;
   out->pierderea = (1 - alfa * beta * beta) / (1 + alfa * beta * beta) * dp;
+  out->beta      = beta;
+  out->reynolds  = red;
   return qn;
 }
 
