@@ -175,20 +175,21 @@ static int Utf8ExtraBytes(const char* s) {
   return n;
 }
 
+static const char* const kCompNames[] = {
+    nullptr,
+    "Metan", "Etan", "Propan", "Izobutan", "N-butan",
+    "Neopentan", "Izopentan", "N-pentan", "2,2-dimetilbutan", "2,3-dimetilbutan",
+    "3-metilpentan", "2-metilpentan", "N-hexan", "2,4-dimetilpentan", "2,2,3-trimetilbutan",
+    "2-metilhexan", "3-metilhexan", "3-etilpentan", "N-heptan", "2,2,3-trimetilpentan",
+    "N-octan", "Benzen", "Toluen", "Hidrogen", "Monoxid de carbon",
+    "Hidrogen sulfurat", "Heliu", "Argon", "Azot", "Oxigen",
+    "Dioxid de carbon", "Aer", "Etilen\xC4\x83", "Propilen\xC4\x83", "Amoniac", "Acetilen\xC4\x83"
+};
+
 static void PrintComposition(const double* x) {
-  static const char* const kNames[] = {
-      nullptr,
-      "Metan", "Etan", "Propan", "Izobutan", "N-butan",
-      "Neopentan", "Izopentan", "N-pentan", "2,2-dimetilbutan", "2,3-dimetilbutan",
-      "3-metilpentan", "2-metilpentan", "N-hexan", "2,4-dimetilpentan", "2,2,3-trimetilbutan",
-      "2-metilhexan", "3-metilhexan", "3-etilpentan", "N-heptan", "2,2,3-trimetilpentan",
-      "N-octan", "Benzen", "Toluen", "Hidrogen", "Monoxid de carbon",
-      "Hidrogen sulfurat", "Heliu", "Argon", "Azot", "Oxigen",
-      "Dioxid de carbon", "Aer", "Etilen\xC4\x83", "Propilen\xC4\x83", "Amoniac", "Acetilen\xC4\x83"
-  };
   std::printf("\n%s    Compoziția amestecului (fracții molare):%s\n", kBoldWhite, kReset);
   for (int i = 1; i <= kNumComponents; i++) {
-    const char* name = kNames[i];
+    const char* name = kCompNames[i];
     int visualLen = (int)strlen(name) - Utf8ExtraBytes(name);
     std::printf("%s    %s", kBoldWhite, name);
     for (int j = visualLen; j < 25; j++) std::putchar(' ');
@@ -354,55 +355,47 @@ int main() {
   if (!comp_loaded) {
     double sum;
     do {
-      std::printf("\n%s Compoziția în fracții molare a amestecului de gaze:%s\n",
+      std::printf("\n%s  Compoziția în fracții molare a amestecului de gaze:%s\n",
                   kBoldWhite, kReset);
-      std::printf("%s  Metan                 : %s", kBoldWhite, kReset); ReadDouble(&x[1]);
-      std::printf("%s  Etan                  : %s", kBoldWhite, kReset); ReadDouble(&x[2]);
-      std::printf("%s  Propan                : %s", kBoldWhite, kReset); ReadDouble(&x[3]);
-      std::printf("%s  Izobutan              : %s", kBoldWhite, kReset); ReadDouble(&x[4]);
-      std::printf("%s  N-butan               : %s", kBoldWhite, kReset); ReadDouble(&x[5]);
-      std::printf("%s  Neopentan             : %s", kBoldWhite, kReset); ReadDouble(&x[6]);
-      std::printf("%s  Izopentan             : %s", kBoldWhite, kReset); ReadDouble(&x[7]);
-      std::printf("%s  N-pentan              : %s", kBoldWhite, kReset); ReadDouble(&x[8]);
-      std::printf("%s  2,2-dimetilbutan      : %s", kBoldWhite, kReset); ReadDouble(&x[9]);
-      std::printf("%s  2,3-dimetilbutan      : %s", kBoldWhite, kReset); ReadDouble(&x[10]);
-      std::printf("%s  3-metilpentan         : %s", kBoldWhite, kReset); ReadDouble(&x[11]);
-      std::printf("%s  2-metilpentan         : %s", kBoldWhite, kReset); ReadDouble(&x[12]);
-      std::printf("%s  N-hexan               : %s", kBoldWhite, kReset); ReadDouble(&x[13]);
-      std::printf("%s  2,4-dimetilpentan     : %s", kBoldWhite, kReset); ReadDouble(&x[14]);
-      std::printf("%s  2,2,3-trimetilbutan   : %s", kBoldWhite, kReset); ReadDouble(&x[15]);
-      std::printf("%s  2-metilhexan          : %s", kBoldWhite, kReset); ReadDouble(&x[16]);
-      std::printf("%s  3-metilhexan          : %s", kBoldWhite, kReset); ReadDouble(&x[17]);
-      std::printf("%s  3-etilpentan          : %s", kBoldWhite, kReset); ReadDouble(&x[18]);
-      std::printf("%s  N-heptan              : %s", kBoldWhite, kReset); ReadDouble(&x[19]);
-      std::printf("%s  2,2,3-trimetilpentan  : %s", kBoldWhite, kReset); ReadDouble(&x[20]);
-      std::printf("%s  N-octan               : %s", kBoldWhite, kReset); ReadDouble(&x[21]);
-      std::printf("%s  Benzen                : %s", kBoldWhite, kReset); ReadDouble(&x[22]);
-      std::printf("%s  Toluen                : %s", kBoldWhite, kReset); ReadDouble(&x[23]);
-      std::printf("%s  Hidrogen              : %s", kBoldWhite, kReset); ReadDouble(&x[24]);
-      std::printf("%s  Monoxid de carbon     : %s", kBoldWhite, kReset); ReadDouble(&x[25]);
-      std::printf("%s  Hidrogen sulfurat     : %s", kBoldWhite, kReset); ReadDouble(&x[26]);
-      std::printf("%s  Heliu                 : %s", kBoldWhite, kReset); ReadDouble(&x[27]);
-      std::printf("%s  Argon                 : %s", kBoldWhite, kReset); ReadDouble(&x[28]);
-      std::printf("%s  Azot                  : %s", kBoldWhite, kReset); ReadDouble(&x[29]);
-      std::printf("%s  Oxigen                : %s", kBoldWhite, kReset); ReadDouble(&x[30]);
-      std::printf("%s  Dioxid de carbon      : %s", kBoldWhite, kReset); ReadDouble(&x[31]);
-      std::printf("%s  Aer                   : %s", kBoldWhite, kReset); ReadDouble(&x[32]);
-      std::printf("%s  Etilenă               : %s", kBoldWhite, kReset); ReadDouble(&x[33]);
-      std::printf("%s  Propilenă             : %s", kBoldWhite, kReset); ReadDouble(&x[34]);
-      std::printf("%s  Amoniac               : %s", kBoldWhite, kReset); ReadDouble(&x[35]);
-      std::printf("%s  Acetilenă             : %s", kBoldWhite, kReset); ReadDouble(&x[36]);
+      for (int i = 1; i <= kNumComponents; i++) {
+        const char* name = kCompNames[i];
+        int vlen = (int)std::strlen(name) - Utf8ExtraBytes(name);
+        double v;
+        do {
+          std::printf("%s  %s", kBoldWhite, name);
+          for (int j = vlen; j < 22; j++) std::putchar(' ');
+          std::printf(": ");
+          ReadDouble(&v);
+          std::printf("%s", kReset);
+          if (v < 0.0 || v > 1.0)
+            std::printf("%s  Valoare invalidă — trebuie să fie în [0, 1].%s\n", kBoldRed, kReset);
+        } while (v < 0.0 || v > 1.0);
+        x[i] = v;
+      }
 
       sum = 0.0;
       for (int i = 1; i <= kNumComponents; i++) sum += x[i];
 
       if (std::fabs(sum - 1.0) > kSumTolerance) {
         std::printf("%s\n  Suma fracțiilor molare = %.6f  ≠  1.%s\n", kBoldRed, sum, kReset);
-        std::printf("%s  Normalizați automat? [d/n]  (n = reintroduceți): %s", kYellow, kReset);
-        if (AskYesNo()) {
-          for (int i = 1; i <= kNumComponents; i++) x[i] /= sum;
-          sum = 1.0;
-          std::printf("%s  Fracțiile au fost normalizate.%s\n", kBoldGreen, kReset);
+        if (sum < kSumTolerance) {
+          std::printf("%s  Suma este zero — reintroduceți compoziția.%s\n", kBoldRed, kReset);
+        } else {
+          std::printf("%s  Normalizați automat? [d/n]  (n = reintroduceți): %s", kYellow, kReset);
+          if (AskYesNo()) {
+            for (int i = 1; i <= kNumComponents; i++) x[i] /= sum;
+            sum = 1.0;
+            std::printf("%s  Fracții normalizate (componente nenule):%s\n", kBoldGreen, kReset);
+            for (int i = 1; i <= kNumComponents; i++) {
+              if (x[i] > 0.0) {
+                const char* name = kCompNames[i];
+                int vlen = (int)std::strlen(name) - Utf8ExtraBytes(name);
+                std::printf("%s    %s", kBoldGreen, name);
+                for (int j = vlen; j < 22; j++) std::putchar(' ');
+                std::printf(": %.8f%s\n", x[i], kReset);
+              }
+            }
+          }
         }
       }
     } while (std::fabs(sum - 1.0) > kSumTolerance);
