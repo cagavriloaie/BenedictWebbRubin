@@ -466,11 +466,11 @@ int main() {
 
   std::printf("\n%s  Condi\xC8\x9Bii de referin\xC8\x9B\xC4\x83 volumetric\xC4\x83:%s\n\n",
               kBoldCyan, kReset);
-  std::printf("%s  1.  Rom\xC3\xA2nia / UE  (DIN 1343)    \xe2\x80\x94   0\xC2\xB0""C \xC8\x99i 15\xC2\xB0""C / 101.325 kPa  [Nm\xC2\xB3/h] \xC8\x99i [Sm\xC2\xB3/h]%s\n", kCyan, kReset);
-  std::printf("%s  2.  ISO 13443  /  UK / Italia       \xe2\x80\x94  15\xC2\xB0""C / 101.325 kPa  [Sm\xC2\xB3/h]%s\n",       kCyan, kReset);
-  std::printf("%s  3.  SUA \xe2\x80\x94 AGA-3  (60\xC2\xB0""F)          \xe2\x80\x94  15.56\xC2\xB0""C / 101.325 kPa  [Sm\xC2\xB3/h]%s\n",  kCyan, kReset);
-  std::printf("%s  4.  Rusia \xe2\x80\x94 GOST 30319-1         \xe2\x80\x94  20\xC2\xB0""C / 101.325 kPa  [m\xC2\xB3/h]%s\n",           kCyan, kReset);
-  std::printf("%s  5.  Personalizat                    \xe2\x80\x94  T [\xC2\xB0""C] introdus manual  [m\xC2\xB3/h]%s\n",           kCyan, kReset);
+  std::printf("%s  1.  Rom\xC3\xA2nia / UE  (DIN 1343)        \xe2\x80\x94   0\xC2\xB0""C \xC8\x99i 15\xC2\xB0""C / 101.325 kPa  [Nm\xC2\xB3/h] \xC8\x99i [Sm\xC2\xB3/h]%s\n", kCyan, kReset);
+  std::printf("%s  2.  ISO 13443  /  UK / Italia       \xe2\x80\x94  15\xC2\xB0""C / 101.325 kPa  [Sm\xC2\xB3/h]%s\n",                                                                    kCyan, kReset);
+  std::printf("%s  3.  SUA \xe2\x80\x94 AGA-3  (60\xC2\xB0""F)             \xe2\x80\x94  15.56\xC2\xB0""C / 101.325 kPa  [Sm\xC2\xB3/h]%s\n",                                           kCyan, kReset);
+  std::printf("%s  4.  Rusia \xe2\x80\x94 GOST 30319-1            \xe2\x80\x94  20\xC2\xB0""C / 101.325 kPa  [m\xC2\xB3/h]%s\n",                                                         kCyan, kReset);
+  std::printf("%s  5.  Personalizat                    \xe2\x80\x94  T [\xC2\xB0""C] introdus manual  [m\xC2\xB3/h]%s\n",                                                                 kCyan, kReset);
 
   int ref_sel = 0;
   do {
