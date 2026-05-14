@@ -11,7 +11,7 @@
 namespace {
 
 
-constexpr float kPi = 3.141592653589f;
+constexpr double kPi = 3.141592653589;
 
 enum class TipDispozitiv {
   kDiafragmaUnghi   = 1,
@@ -35,17 +35,17 @@ enum class ErrorCode {
 constexpr int kNumComponents = 36;
 constexpr int kArraySize     = kNumComponents + 1;
 
-constexpr float kKelvinOffset      = 273.15f;
-constexpr float kGasConstantR      = 0.082055f;
-constexpr float kRefTempCelsius    = 20.0f;
-constexpr float kKpaPerAtm         = 101.325f;
-constexpr float kReynoldsIsoRef    = 1.0e6f;  // ISO 5167 Re normalization
-constexpr float kInitialReynolds   = 1.0e6f;  // starting guess for Re iteration
-constexpr float kReynoldsTolerance = 1.0e-4f;
-constexpr float kDensityTolerance  = 5.0e-4f;
-constexpr float kRoMin             = 1.0e-4f;
-constexpr float kRoMax             = 5.0f;
-constexpr float kSumTolerance      = 1.0e-3f;  // tolerance for Σx = 1 check
+constexpr double kKelvinOffset      = 273.15;
+constexpr double kGasConstantR      = 0.082055;
+constexpr double kRefTempCelsius    = 20.0;
+constexpr double kKpaPerAtm         = 101.325;
+constexpr double kReynoldsIsoRef    = 1.0e6;  // ISO 5167 Re normalization
+constexpr double kInitialReynolds   = 1.0e6;  // starting guess for Re iteration
+constexpr double kReynoldsTolerance = 1.0e-4;
+constexpr double kDensityTolerance  = 5.0e-4;
+constexpr double kRoMin             = 1.0e-4;
+constexpr double kRoMax             = 5.0;
+constexpr double kSumTolerance      = 1.0e-3;  // tolerance for Σx = 1 check
 
 // ANSI color codes
 constexpr const char* kReset      = "\033[0m";
@@ -93,28 +93,28 @@ constexpr const char* TipName(TipDispozitiv tip) {
 // Constantele BWR ale amestecului, calculate o singură dată din compoziție.
 // Ecuația: p = ρRT + (B₀RT−A₀−C₀/T²)ρ² + (bRT−a)ρ³ + aαρ⁶ + (c/T²)ρ³(1+γρ²)exp(−γρ²)
 struct BwrConst {
-  float a0         = 0.0f;  // A₀ — forțe atractive de ordin 2  (termen −A₀ρ²)
-  float b0         = 0.0f;  // B₀ — excludere de volum de ordin 2 (termen +B₀RTρ²)
-  float c0         = 0.0f;  // C₀ — corecție termică de ordin 2  (termen −C₀ρ²/T²)
-  float a          = 0.0f;  // a  — forțe atractive de ordin 3  (termen −aρ³ și +aαρ⁶)
-  float b          = 0.0f;  // b  — excludere de volum de ordin 3 (termen +bRTρ³)
-  float c          = 0.0f;  // c  — corecție termică de ordin 3  (termen +cρ³/T²·exp)
-  float alpha      = 0.0f;  // α  — amplitudine termen de densitate ρ⁶
-  float gamma      = 0.0f;  // γ  — parametru Gaussian în exp(−γρ²)
-  float molar_mass = 0.0f;  // M  — masa molară a amestecului [g/mol]
+  double a0         = 0.0;  // A₀ — forțe atractive de ordin 2  (termen −A₀ρ²)
+  double b0         = 0.0;  // B₀ — excludere de volum de ordin 2 (termen +B₀RTρ²)
+  double c0         = 0.0;  // C₀ — corecție termică de ordin 2  (termen −C₀ρ²/T²)
+  double a          = 0.0;  // a  — forțe atractive de ordin 3  (termen −aρ³ și +aαρ⁶)
+  double b          = 0.0;  // b  — excludere de volum de ordin 3 (termen +bRTρ³)
+  double c          = 0.0;  // c  — corecție termică de ordin 3  (termen +cρ³/T²·exp)
+  double alpha      = 0.0;  // α  — amplitudine termen de densitate ρ⁶
+  double gamma      = 0.0;  // γ  — parametru Gaussian în exp(−γρ²)
+  double molar_mass = 0.0;  // M  — masa molară a amestecului [g/mol]
 };
 
 // Rezultatele hidraulice returnate de CalcMassFlow()
 struct FlowResult {
-  float viteza    = 0.0f;  // viteza medie a gazului în conductă [m/s]
-  float pierderea = 0.0f;  // pierderea de presiune prin strangulare [kPa]
+  double viteza    = 0.0;  // viteza medie a gazului în conductă [m/s]
+  double pierderea = 0.0;  // pierderea de presiune prin strangulare [kPa]
 };
 
 // Condiții de referință volumetrică (un preset = 1 sau 2 perechi T/101.325 kPa)
 struct CountryRef {
   const char* tara;      // denumire țară/standard
   int         n;         // număr de condiții (1 sau 2)
-  float       t[2];      // temperaturi de referință [°C]
+  double       t[2];      // temperaturi de referință [°C]
   const char* label[2];  // etichete unitate (ex. "Nm³/h", "Sm³/h")
 };
 
@@ -130,60 +130,60 @@ constexpr bool IsDiaphragm(TipDispozitiv tip) {
 // d_m  — diametrul interior al conductei la locul de măsurare [m]
 // beta — raportul de strangulare β = d/D [-]
 // re   — numărul Reynolds în conductă (valoarea curentă din iterație) [-]
-float DischargeCoefficient(TipDispozitiv tip, float d_m, float beta, float re) {
-  float coef = 0.0f;
+double DischargeCoefficient(TipDispozitiv tip, double d_m, double beta, double re) {
+  double coef = 0.0;
   switch (tip) {
     case TipDispozitiv::kDiafragmaUnghi:
     case TipDispozitiv::kDiafragmaFlansa:
     case TipDispozitiv::kDiafragmaDD2: {
       // Poziția prizelor de presiune: L1 amonte, L2p aval (adimensionalizate cu D)
-      float L1, L2p;
+      double L1, L2p;
       if (tip == TipDispozitiv::kDiafragmaUnghi) {
-        L1 = 0.0f;    L2p = 0.0f;            // prize în unghi
+        L1 = 0.0;    L2p = 0.0;            // prize în unghi
       } else if (tip == TipDispozitiv::kDiafragmaFlansa) {
-        L1 = 0.0254f / d_m;  L2p = L1;       // prize la flanșă: 25,4 mm / D
+        L1 = 0.0254 / d_m;  L2p = L1;       // prize la flanșă: 25,4 mm / D
       } else {
-        L1 = 1.0f;    L2p = 0.47f;           // prize la D și D/2
+        L1 = 1.0;    L2p = 0.47;           // prize la D și D/2
       }
-      float A  = std::pow(19000.0f * beta / re, 0.8f);
-      float M2 = 2.0f * L2p / (1.0f - beta);
-      coef = 0.5961f
-           + 0.0261f * beta * beta
-           - 0.216f  * std::pow(beta, 8.0f)
-           + 0.000521f * std::pow(1.0e6f * beta / re, 0.7f)
-           + (0.0188f + 0.0063f * A)
-             * std::pow(beta, 3.5f) * std::pow(1.0e6f / re, 0.3f)
-           + (0.043f + 0.080f * std::exp(-10.0f * L1)
-                     - 0.123f * std::exp( -7.0f * L1))
-             * (1.0f - 0.11f * A) * std::pow(beta, 4.0f)
-             / (1.0f - std::pow(beta, 4.0f))
-           - 0.031f * (M2 - 0.8f * std::pow(M2, 1.1f))
-             * std::pow(beta, 1.3f);
-      if (d_m < 0.07112f)  // corecție pentru D < 71,12 mm
-        coef += 0.011f * (0.75f - beta) * (2.8f - d_m / 0.0254f);
+      double A  = std::pow(19000.0 * beta / re, 0.8);
+      double M2 = 2.0 * L2p / (1.0 - beta);
+      coef = 0.5961
+           + 0.0261 * beta * beta
+           - 0.216  * std::pow(beta, 8.0)
+           + 0.000521 * std::pow(1.0e6 * beta / re, 0.7)
+           + (0.0188 + 0.0063 * A)
+             * std::pow(beta, 3.5) * std::pow(1.0e6 / re, 0.3)
+           + (0.043 + 0.080 * std::exp(-10.0 * L1)
+                     - 0.123 * std::exp( -7.0 * L1))
+             * (1.0 - 0.11 * A) * std::pow(beta, 4.0)
+             / (1.0 - std::pow(beta, 4.0))
+           - 0.031 * (M2 - 0.8 * std::pow(M2, 1.1))
+             * std::pow(beta, 1.3);
+      if (d_m < 0.07112)  // corecție pentru D < 71,12 mm
+        coef += 0.011 * (0.75 - beta) * (2.8 - d_m / 0.0254);
       break;
     }
     case TipDispozitiv::kAjutajIsa:
-      coef = 0.99f - 0.2262f * std::pow(beta, 4.1f)
-           + (0.000215f - 0.001125f * beta + 0.00249f * std::pow(beta, 4.7f))
-           * std::pow(kReynoldsIsoRef / re, 1.15f);
+      coef = 0.99 - 0.2262 * std::pow(beta, 4.1)
+           + (0.000215 - 0.001125 * beta + 0.00249 * std::pow(beta, 4.7))
+           * std::pow(kReynoldsIsoRef / re, 1.15);
       break;
     case TipDispozitiv::kAjutajRazaLunga:
-      coef = 0.9965f
-           - 0.00653f * std::pow(beta, 0.5f)
-           * std::pow(kReynoldsIsoRef / re, 0.5f);
+      coef = 0.9965
+           - 0.00653 * std::pow(beta, 0.5)
+           * std::pow(kReynoldsIsoRef / re, 0.5);
       break;
     case TipDispozitiv::kVenturiBrut:
-      coef = 0.984f;
+      coef = 0.984;
       break;
     case TipDispozitiv::kVenturiPrelucrat:
-      coef = 0.995f;
+      coef = 0.995;
       break;
     case TipDispozitiv::kVenturiTabla:
-      coef = 0.985f;
+      coef = 0.985;
       break;
     case TipDispozitiv::kAjutajVenturi:
-      coef = 0.9858f - 0.196f * std::pow(beta, 4.5f);
+      coef = 0.9858 - 0.196 * std::pow(beta, 4.5);
       break;
   }
   return coef;
@@ -192,7 +192,7 @@ float DischargeCoefficient(TipDispozitiv tip, float d_m, float beta, float re) {
 // Calculează coeficientul de viteză α = C / √(1 − β⁴) [-].
 // Înglobează atât coeficientul de debit C cât și factorul geometric 1/√(1−β⁴)
 // pentru a obține direct factorul de amplitudine din ecuația debitului masic.
-float VelocityCoefficient(TipDispozitiv tip, float d_m, float beta, float re) {
+double VelocityCoefficient(TipDispozitiv tip, double d_m, double beta, double re) {
   return std::pow(1 - std::pow(beta, 4), -0.5)
        * DischargeCoefficient(tip, d_m, beta, re);
 }
@@ -200,7 +200,7 @@ float VelocityCoefficient(TipDispozitiv tip, float d_m, float beta, float re) {
 // Afișează pe consolă mesajul de eroare corespunzător codului de eroare.
 // Parametrul red este folosit doar pentru ErrorCode::kReynolds, pentru a
 // indica valoarea numerică a lui Re care a depășit domeniul ISO 5167.
-void PrintError(ErrorCode code, float red) {
+void PrintError(ErrorCode code, double red) {
   std::printf("%s", kBoldRed);
   switch (code) {
     case ErrorCode::kDiametruInterior:
@@ -224,7 +224,7 @@ void PrintError(ErrorCode code, float red) {
 // Calculează debitul masic Qm [kg/s] prin dispozitivul de strangulare.
 // Înainte de calcul validează domeniile ISO 5167 pentru D, d, β și Re.
 // Algoritmul iterează corecția cu Re până la |Qm_k − Qm_{k-1}| < kReynoldsTolerance.
-// Returnează 0.0f și afișează eroarea dacă vreun parametru depășește domeniul.
+// Returnează 0.0 și afișează eroarea dacă vreun parametru depășește domeniul.
 // dp     — presiunea diferențială Δp [kPa]
 // p      — presiunea absolută [kPa]
 // t      — temperatura fluidului [°C]
@@ -234,11 +234,11 @@ void PrintError(ErrorCode code, float red) {
 // ro     — densitatea gazului la condiții (t, p) [kg/m³]
 // eta    — viscozitatea dinamică la condiții (t, p) [Pa·s]
 // out    — ieșire: viteza medie [m/s] și pierderea de presiune [kPa]
-float CalcMassFlow(float dp, float p, float t,
-            TipDispozitiv tip, float d_int, float d_orif,
-            float ro, float eta, FlowResult* out) {
-  float d_i = d_int  * (1 + 0.0000122f * (t - kRefTempCelsius));
-  float d_o = d_orif * (1 + 0.0000165f * (t - kRefTempCelsius));
+double CalcMassFlow(double dp, double p, double t,
+            TipDispozitiv tip, double d_int, double d_orif,
+            double ro, double eta, FlowResult* out) {
+  double d_i = d_int  * (1 + 0.0000122 * (t - kRefTempCelsius));
+  double d_o = d_orif * (1 + 0.0000165 * (t - kRefTempCelsius));
 
   if ((d_i < 50)
       || (d_i > 1000 && tip == TipDispozitiv::kDiafragmaUnghi)
@@ -260,45 +260,45 @@ float CalcMassFlow(float dp, float p, float t,
     PrintError(ErrorCode::kDiametruInterior, 0);
     return 0;
   }
-  if ((IsDiaphragm(tip) && d_o < 12.5f)
+  if ((IsDiaphragm(tip) && d_o < 12.5)
       || (tip == TipDispozitiv::kAjutajVenturi && d_o <= 50)) {
     PrintError(ErrorCode::kOrificuStrangulare, 0);
     return 0;
   }
 
-  float beta = d_o / d_i;
+  double beta = d_o / d_i;
 
-  if (((beta < 0.23f  || beta > 0.8f)  && tip == TipDispozitiv::kDiafragmaUnghi)
-      || ((beta < 0.20f || beta > 0.75f) && (tip == TipDispozitiv::kDiafragmaFlansa
+  if (((beta < 0.23  || beta > 0.8)  && tip == TipDispozitiv::kDiafragmaUnghi)
+      || ((beta < 0.20 || beta > 0.75) && (tip == TipDispozitiv::kDiafragmaFlansa
                                              || tip == TipDispozitiv::kDiafragmaDD2))
-      || ((beta < 0.3f  || beta > 0.8f) && tip == TipDispozitiv::kAjutajIsa)
-      || ((beta < 0.2f  || beta > 0.8f) && tip == TipDispozitiv::kAjutajRazaLunga)) {
+      || ((beta < 0.3  || beta > 0.8) && tip == TipDispozitiv::kAjutajIsa)
+      || ((beta < 0.2  || beta > 0.8) && tip == TipDispozitiv::kAjutajRazaLunga)) {
     PrintError(ErrorCode::kRaportStrangulare, 0);
     return 0;
   }
-  if (((beta < 0.3f   || beta > 0.75f)  && tip == TipDispozitiv::kVenturiBrut)
-      || ((beta < 0.4f   || beta > 0.75f) && tip == TipDispozitiv::kVenturiPrelucrat)
-      || ((beta < 0.4f   || beta > 0.7f)  && tip == TipDispozitiv::kVenturiTabla)
-      || ((beta < 0.316f || beta > 0.775f) && tip == TipDispozitiv::kAjutajVenturi)) {
+  if (((beta < 0.3   || beta > 0.75)  && tip == TipDispozitiv::kVenturiBrut)
+      || ((beta < 0.4   || beta > 0.75) && tip == TipDispozitiv::kVenturiPrelucrat)
+      || ((beta < 0.4   || beta > 0.7)  && tip == TipDispozitiv::kVenturiTabla)
+      || ((beta < 0.316 || beta > 0.775) && tip == TipDispozitiv::kAjutajVenturi)) {
     PrintError(ErrorCode::kRaportStrangulare, 0);
     return 0;
   }
 
-  float eps, y;
+  double eps, y;
   if (IsDiaphragm(tip)) {
-    eps = 1 - (0.41f + 0.35f * std::pow(beta, 4)) * dp / p / 1.31f;
+    eps = 1 - (0.41 + 0.35 * std::pow(beta, 4)) * dp / p / 1.31;
   } else {
     y   = 1 - dp / p;
-    eps = std::sqrt(1.31f * std::pow(y, 1.52671f) / 0.31f
+    eps = std::sqrt(1.31 * std::pow(y, 1.52671) / 0.31
         * (1 - std::pow(beta, 4))
-        / (1 - std::pow(beta, 4) * std::pow(y, 1.52671f))
-        * (1 - std::pow(y, 0.236641f)) / (1 - y));
+        / (1 - std::pow(beta, 4) * std::pow(y, 1.52671))
+        * (1 - std::pow(y, 0.236641)) / (1 - y));
   }
 
   d_i /= 1000;
   d_o /= 1000;
 
-  float red = kInitialReynolds, qn = 0, q0 = 0, alfa = 0;
+  double red = kInitialReynolds, qn = 0, q0 = 0, alfa = 0;
   do {
     q0   = qn;
     alfa = VelocityCoefficient(tip, d_i, beta, red);
@@ -309,22 +309,22 @@ float CalcMassFlow(float dp, float p, float t,
   bool reynolds_valid = false;
   switch (tip) {
     case TipDispozitiv::kDiafragmaUnghi:
-      if ((5000  <= red) && (red <= 1e8) && (0.23f <= beta) && (beta < 0.45f))
+      if ((5000  <= red) && (red <= 1e8) && (0.23 <= beta) && (beta < 0.45))
         reynolds_valid = true;
-      if ((10000 <= red) && (red <= 1e8) && (0.45f <= beta) && (beta < 0.77f))
+      if ((10000 <= red) && (red <= 1e8) && (0.45 <= beta) && (beta < 0.77))
         reynolds_valid = true;
-      if ((20000 <= red) && (red <= 1e8) && (0.77f <= beta) && (beta <= 0.80f))
+      if ((20000 <= red) && (red <= 1e8) && (0.77 <= beta) && (beta <= 0.80))
         reynolds_valid = true;
       break;
     case TipDispozitiv::kDiafragmaFlansa:
     case TipDispozitiv::kDiafragmaDD2:
-      if ((1.26e6f * beta * beta * d_i <= red) && (red <= 1e8))
+      if ((1.26e6 * beta * beta * d_i <= red) && (red <= 1e8))
         reynolds_valid = true;
       break;
     case TipDispozitiv::kAjutajIsa:
-      if ((70000 <= red) && (red <= 1e7) && (0.30f <= beta) && (beta < 0.44f))
+      if ((70000 <= red) && (red <= 1e7) && (0.30 <= beta) && (beta < 0.44))
         reynolds_valid = true;
-      if ((20000 <= red) && (red <= 1e7) && (0.44f <= beta) && (beta <= 0.80f))
+      if ((20000 <= red) && (red <= 1e7) && (0.44 <= beta) && (beta <= 0.80))
         reynolds_valid = true;
       break;
     case TipDispozitiv::kAjutajRazaLunga:
@@ -363,13 +363,13 @@ float CalcMassFlow(float dp, float p, float t,
 // și presiunea p [atm] prin rezolvarea ecuației de stare BWR cu metoda bisecției.
 // Caută ρ în intervalul [kRoMin, kRoMax] [mol/L] până când
 // |p_BWR(ρ) − p| < kDensityTolerance [atm].
-float CalcDensity(float t, float p, const BwrConst& bwr) {
-  float T   = t + kKelvinOffset;
-  float R   = kGasConstantR;
-  float ro1 = kRoMin;
-  float ro2 = kRoMax;
-  float ro  = 0.0f;
-  float pcal = 0.0f;
+double CalcDensity(double t, double p, const BwrConst& bwr) {
+  double T   = t + kKelvinOffset;
+  double R   = kGasConstantR;
+  double ro1 = kRoMin;
+  double ro2 = kRoMax;
+  double ro  = 0.0;
+  double pcal = 0.0;
   do {
     ro   = (ro1 + ro2) / 2;
     pcal = R * T * ro

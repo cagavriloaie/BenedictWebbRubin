@@ -74,33 +74,37 @@
 static const char kCompFile[] = "bwr_comp.dat";
 static const char kConfFile[] = "bwr_conf.dat";
 
-static bool LoadComposition(float* x) {
-  FILE* f = std::fopen(kCompFile, "r");
+static bool LoadComposition(double* x) {
+  FILE* f = nullptr;
+  fopen_s(&f, kCompFile, "r");
   if (!f) return false;
   for (int i = 1; i <= kNumComponents; i++) {
-    if (std::fscanf(f, "%f", &x[i]) != 1) { std::fclose(f); return false; }
+    if (fscanf_s(f, "%lf", &x[i]) != 1) { std::fclose(f); return false; }
   }
   std::fclose(f);
   return true;
 }
 
-static void SaveComposition(const float* x) {
-  FILE* f = std::fopen(kCompFile, "w");
+static void SaveComposition(const double* x) {
+  FILE* f = nullptr;
+  fopen_s(&f, kCompFile, "w");
   if (!f) return;
   for (int i = 1; i <= kNumComponents; i++) std::fprintf(f, "%.8f\n", x[i]);
   std::fclose(f);
 }
 
-static bool LoadConfig(int* tip_raw, float* d_int, float* d_orif) {
-  FILE* f = std::fopen(kConfFile, "r");
+static bool LoadConfig(int* tip_raw, double* d_int, double* d_orif) {
+  FILE* f = nullptr;
+  fopen_s(&f, kConfFile, "r");
   if (!f) return false;
-  bool ok = (std::fscanf(f, "%d %f %f", tip_raw, d_int, d_orif) == 3);
+  bool ok = (fscanf_s(f, "%d %lf %lf", tip_raw, d_int, d_orif) == 3);
   std::fclose(f);
   return ok;
 }
 
-static void SaveConfig(int tip_raw, float d_int, float d_orif) {
-  FILE* f = std::fopen(kConfFile, "w");
+static void SaveConfig(int tip_raw, double d_int, double d_orif) {
+  FILE* f = nullptr;
+  fopen_s(&f, kConfFile, "w");
   if (!f) return;
   std::fprintf(f, "%d\n%.4f\n%.4f\n", tip_raw, d_int, d_orif);
   std::fclose(f);
@@ -113,7 +117,7 @@ static void ExitApp() {
   std::exit(0);
 }
 
-static bool ReadFloat(float* val) {
+static bool ReadFloat(double* val) {
   char buf[64] = {};
   int pos = 0;
   for (;;) {
@@ -131,7 +135,7 @@ static bool ReadFloat(float* val) {
       std::printf("%c", ch); std::fflush(stdout);
     }
   }
-  *val = (pos > 0) ? static_cast<float>(std::atof(buf)) : 0.0f;
+  *val = (pos > 0) ? static_cast<double>(std::atof(buf)) : 0.0;
   return true;
 }
 
@@ -172,7 +176,7 @@ static int Utf8ExtraBytes(const char* s) {
   return n;
 }
 
-static void PrintComposition(const float* x) {
+static void PrintComposition(const double* x) {
   static const char* const kNames[] = {
       nullptr,
       "Metan", "Etan", "Propan", "Izobutan", "N-butan",
@@ -199,108 +203,108 @@ int main() {
   std::system("chcp 65001 > nul");  // UTF-8 pentru caractere românești
 #endif
 
-  float x[kArraySize] = {};
+  double x[kArraySize] = {};
 
   // Valori brute; tablourile marcate cu (*) sunt scalate după inițializare
-  static const float A[kArraySize] = {
-       0,          1.79894f,   4.15556f,   6.87225f,  10.23264f,  10.0847f,   12.8f,     12.7959f,  12.1794f,  11.842f,
-      16.43f,     12.203f,    12.203f,    14.4373f,   12.423f,    12.423f,    14.31f,    14.31f,    14.31f,    17.5206f,
-      51.42f,     51.86f,      5.509772f,  6.21f,      0.040962f,  1.34122f,   2.12044f,  0.040962f,  0.823417f, 1.053642f,
-       0.950852f,  2.73742f,   1.0292916f, 3.33958f,   6.1122f,    3.7892819f, 5.1079342f};
+  static const double A[kArraySize] = {
+       0,          1.79894,   4.15556,   6.87225,  10.23264,  10.0847,   12.8,     12.7959,  12.1794,  11.842,
+      16.43,     12.203,    12.203,    14.4373,   12.423,    12.423,    14.31,    14.31,    14.31,    17.5206,
+      51.42,     51.86,      5.509772,  6.21,      0.040962,  1.34122,   2.12044,  0.040962,  0.823417, 1.053642,
+       0.950852,  2.73742,   1.0292916, 3.33958,   6.1122,    3.7892819, 5.1079342};
 
-  static float B[kArraySize] = {  // (*) /= 100
-        0,         4.54625f,   6.27724f,  97.313f,    13.7544f,   12.4361f,   16.0f,     16.0053f,  15.6751f,  19.214f,
-       19.0f,      8.1505f,    8.1505f,   17.7813f,   20.246f,    20.246f,     9.1423f,   9.1423f,   9.1423f,  19.9f,
-      110.3f,    121.2f,      50.30055f,  40.8f,       2.3661f,    5.45425f,   2.6182f,   2.3661f,   2.22826f,  4.07526f,
-        2.22f,     3.38943f,   3.6216378f, 5.56833f,   8.50647f,  51.646121f,  6.946403f};
+  static double B[kArraySize] = {  // (*) /= 100
+        0,         4.54625,   6.27724,  97.313,    13.7544,   12.4361,   16.0,     16.0053,  15.6751,  19.214,
+       19.0,      8.1505,    8.1505,   17.7813,   20.246,    20.246,     9.1423,   9.1423,   9.1423,  19.9,
+      110.3,    121.2,      50.30055,  40.8,       2.3661,    5.45425,   2.6182,   2.3661,   2.22826,  4.07526,
+        2.22,     3.38943,   3.6216378, 5.56833,   8.50647,  51.646121,  6.946403};
 
-  static float C[kArraySize] = {  // (*) *= 100000
-       0,          0.318382f,  1.79592f,   5.08256f,   8.49943f,   9.9283f,   17.5f,     17.4632f,  21.21219f,  33.595f,
-      25.534f,    22.125f,    22.125f,    33.1935f,   51.237f,    51.237f,    31.564f,   31.564f,   31.564f,   47.4574f,
-       1.032f,     0.931f,    34.2997f,   29.0f,       0.0000016227f, 0.0856209f, 7.9384f, 0.0000016227f, 0.1314125f, 0.08059f,
-       0.326436f,  1.38567f,   0.11882507f, 9.6936284f, 1.3114f,   1.785708f,  6.506284f};
+  static double C[kArraySize] = {  // (*) *= 100000
+       0,          0.318382,  1.79592,   5.08256,   8.49943,   9.9283,   17.5,     17.4632,  21.21219,  33.595,
+      25.534,    22.125,    22.125,    33.1935,   51.237,    51.237,    31.564,   31.564,   31.564,   47.4574,
+       1.032,     0.931,    34.2997,   29.0,       0.0000016227, 0.0856209, 7.9384, 0.0000016227, 0.1314125, 0.08059,
+       0.326436,  1.38567,   0.11882507, 9.6936284, 1.3114,   1.785708,  6.506284};
 
-  static const float a[kArraySize] = {
-       0,          0.04352f,   0.34516f,   0.9477f,    1.93763f,   1.88231f,   3.756f,    3.7562f,   4.0748f,  10.108f,
-       4.6956f,    7.4286f,    7.4286f,    7.11671f,  11.786f,    11.786f,     7.5854f,   7.5854f,   7.5854f,  10.36475f,
-      32.512f,    31.423f,     5.57f,      4.32f,      0.00057339f, 0.3665f,   0.84468f,  0.00057339f, 0.0288358f, 0.025102f,
-       0.16269f,   0.136814f,  0.041402895f, 0.259f,   0.774056f,  0.10354029f, 0.6970948f};
+  static const double a[kArraySize] = {
+       0,          0.04352,   0.34516,   0.9477,    1.93763,   1.88231,   3.756,    3.7562,   4.0748,  10.108,
+       4.6956,    7.4286,    7.4286,    7.11671,  11.786,    11.786,     7.5854,   7.5854,   7.5854,  10.36475,
+      32.512,    31.423,     5.57,      4.32,      0.00057339, 0.3665,   0.84468,  0.00057339, 0.0288358, 0.025102,
+       0.16269,   0.136814,  0.041402895, 0.259,   0.774056,  0.10354029, 0.6970948};
 
-  static float b[kArraySize] = {  // (*) /= 100
-       0,          0.252033f,  1.1122f,    2.25f,      4.24352f,   3.99983f,   6.68f,     6.6812f,   6.6812f,  14.0f,
-       7.9f,      11.224f,    11.224f,    10.9131f,   17.9131f,   17.721f,    14.321f,   14.321f,   14.321f,  15.1954f,
-      53.14f,     58.32f,      7.663f,     5.18f,      0.000019727f, 0.263158f, 1.4653f,  0.000019727f, 0.215289f, 0.23277f,
-       0.358835f,  0.527236f,  0.25625f,   0.86f,     18.7059f,    0.071952516f, 1.482999f};
+  static double b[kArraySize] = {  // (*) /= 100
+       0,          0.252033,  1.1122,    2.25,      4.24352,   3.99983,   6.68,     6.6812,   6.6812,  14.0,
+       7.9,      11.224,    11.224,    10.9131,   17.9131,   17.721,    14.321,   14.321,   14.321,  15.1954,
+      53.14,     58.32,      7.663,     5.18,      0.000019727, 0.263158, 1.4653,  0.000019727, 0.215289, 0.23277,
+       0.358835,  0.527236,  0.25625,   0.86,     18.7059,    0.071952516, 1.482999};
 
-  static float c[kArraySize] = {  // (*) *= 100000
-       0,          0.035878f,  0.32767f,   1.29f,      2.8601f,    3.164f,     6.95f,     6.95f,     8.2417f,  17.483f,
-      11.346f,     9.5556f,    9.5556f,   15.1276f,   22.586f,    22.586f,    13.252f,   13.252f,   13.252f,  24.7f,
-      11.21f,     18.23f,     11.76418f,  23.3f,      0.0000000552f, 0.0104f,  1.1335f,  0.0000000552f, 0.007982437f, 0.0072841f,
-       0.128274f,  0.14918f,   0.1729187f,  2.8297636f, 2.112f,    0.0015753298f, 1.0984375f};
+  static double c[kArraySize] = {  // (*) *= 100000
+       0,          0.035878,  0.32767,   1.29,      2.8601,    3.164,     6.95,     6.95,     8.2417,  17.483,
+      11.346,     9.5556,    9.5556,   15.1276,   22.586,    22.586,    13.252,   13.252,   13.252,  24.7,
+      11.21,     18.23,     11.76418,  23.3,      0.0000000552, 0.0104,  1.1335,  0.0000000552, 0.007982437, 0.0072841,
+       0.128274,  0.14918,   0.1729187,  2.8297636, 2.112,    0.0015753298, 1.0984375};
 
-  static float alfa[kArraySize] = {  // (*) /= 1000
-        0,         0.33f,      0.243389f,  0.607175f,  1.07408f,   1.10132f,   1.7f,      1.7f,      1.81f,    2.189f,
-        3.5948f,   2.25f,      2.25f,      2.81086f,   2.764f,     2.764f,     2.8155f,   2.8155f,   2.8155f,  4.35611f,
-        2.207f,    2.581f,     0.7001f,    0.318f,     0.0072673f, 0.135f,     0.071955f, 0.0072673f, 0.035589f, 0.1272f,
-      927.06f,     0.0698611f, 14.483933f,  0.73924f,   0.178f,    0.0046521779f, 0.27363248f};
+  static double alfa[kArraySize] = {  // (*) /= 1000
+        0,         0.33,      0.243389,  0.607175,  1.07408,   1.10132,   1.7,      1.7,      1.81,    2.189,
+        3.5948,   2.25,      2.25,      2.81086,   2.764,     2.764,     2.8155,   2.8155,   2.8155,  4.35611,
+        2.207,    2.581,     0.7001,    0.318,     0.0072673, 0.135,     0.071955, 0.0072673, 0.035589, 0.1272,
+      927.06,     0.0698611, 14.483933,  0.73924,   0.178,    0.0046521779, 0.27363248};
 
-  static float gama[kArraySize] = {  // (*) /= 100
-       0,          1.05f,      1.18f,      2.2f,       3.4f,       3.4f,       4.63f,     4.63f,     4.75f,    5.65f,
-       7.5f,       6.289f,     6.289f,     6.668849f,  6.799f,     6.799f,     7.446f,    7.446f,    7.446f,   9.0f,
-       0.0318f,    0.0209f,    2.93f,      1.12f,      0.077942f,  0.6f,       0.59236f,  0.077942f, 0.233827f, 0.53f,
-       3.1f,       0.460593f,  0.88722417f, 2.911417f,  0.923f,   19.805156f,  1.245167f};
+  static double gama[kArraySize] = {  // (*) /= 100
+       0,          1.05,      1.18,      2.2,       3.4,       3.4,       4.63,     4.63,     4.75,    5.65,
+       7.5,       6.289,     6.289,     6.668849,  6.799,     6.799,     7.446,    7.446,    7.446,   9.0,
+       0.0318,    0.0209,    2.93,      1.12,      0.077942,  0.6,       0.59236,  0.077942, 0.233827, 0.53,
+       3.1,       0.460593,  0.88722417, 2.911417,  0.923,   19.805156,  1.245167};
 
-  static float V[kArraySize] = {  // (*) /= 1000
-        0,        99.5f,     148.00f,    200.00f,    263.00f,    255.00f,    303.00f,   308.00f,   311.00f,   359.00f,
-      358.00f,   367.00f,   367.00f,    368.00f,    420.00f,    420.04f,    428.00f,   418.00f,   416.00f,   426.00f,
-      482.00f,   486.00f,   260.00f,    316.00f,     65.0f,      93.10f,     95.00f,    57.80f,    75.20f,    90.10f,
-       74.40f,    94.0f,    90.52f,    124.00f,    181.00f,     72.50f,    113.00f};
+  static double V[kArraySize] = {  // (*) /= 1000
+        0,        99.5,     148.00,    200.00,    263.00,    255.00,    303.00,   308.00,   311.00,   359.00,
+      358.00,   367.00,   367.00,    368.00,    420.00,    420.04,    428.00,   418.00,   416.00,   426.00,
+      482.00,   486.00,   260.00,    316.00,     65.0,      93.10,     95.00,    57.80,    75.20,    90.10,
+       74.40,    94.0,    90.52,    124.00,    181.00,     72.50,    113.00};
 
-  static const float m[kArraySize] = {
-        0,        16.043f,   30.070f,    44.097f,    58.124f,    58.124f,    72.151f,   72.151f,   72.151f,   86.178f,
-       86.178f,   86.178f,   86.178f,    86.178f,   100.205f,   100.205f,   100.205f,  100.205f,  100.205f,  100.205f,
-      114.232f,  114.232f,   78.114f,    92.141f,     2.016f,    28.011f,    34.082f,    4.003f,   39.944f,   28.016f,
-       32.000f,   44.011f,   28.788f,    28.054f,    42.081f,    17.032f,   26.038f};
+  static const double m[kArraySize] = {
+        0,        16.043,   30.070,    44.097,    58.124,    58.124,    72.151,   72.151,   72.151,   86.178,
+       86.178,   86.178,   86.178,    86.178,   100.205,   100.205,   100.205,  100.205,  100.205,  100.205,
+      114.232,  114.232,   78.114,    92.141,     2.016,    28.011,    34.082,    4.003,   39.944,   28.016,
+       32.000,   44.011,   28.788,    28.054,    42.081,    17.032,   26.038};
 
-  static const float cs[kArraySize] = {
-        0,       148.6f,    215.7f,     237.1f,     330.1f,     331.4f,     340.1f,    340.1f,    341.1f,    398.2f,
-      398.3f,    399.0f,    399.1f,     399.3f,     412.1f,     413.2f,     413.2f,    410.1f,    412.2f,    413.6f,
-      563.0f,    564.0f,    412.3f,     418.3f,      59.7f,      91.7f,     301.1f,     10.22f,    93.3f,     71.4f,
-      106.7f,    195.2f,     78.6f,     224.7f,     298.9f,     558.2f,    231.8f};
+  static const double cs[kArraySize] = {
+        0,       148.6,    215.7,     237.1,     330.1,     331.4,     340.1,    340.1,    341.1,    398.2,
+      398.3,    399.0,    399.1,     399.3,     412.1,     413.2,     413.2,    410.1,    412.2,    413.6,
+      563.0,    564.0,    412.3,     418.3,      59.7,      91.7,     301.1,     10.22,    93.3,     71.4,
+      106.7,    195.2,     78.6,     224.7,     298.9,     558.2,    231.8};
 
-  static float et[kArraySize] = {  // (*) /= 10000
-       0,         0.1085f,   0.0915f,    0.0805f,    0.0735f,    0.0725f,    0.0711f,   0.0696f,   0.067f,    0.0666f,
-       0.0658f,   0.0647f,   0.0651f,    0.0641f,    0.0626f,    0.0626f,    0.061f,    0.0619f,   0.0616f,   0.0607f,
-       0.05947f,  0.0577f,   0.0745f,    0.066f,     0.0715f,    0.1636f,    0.141f,    0.071f,    0.174f,    0.1755f,
-       0.2025f,   0.1465f,   0.1815f,    0.094f,     0.078f,     0.093f,     0.0943f};
+  static double et[kArraySize] = {  // (*) /= 10000
+       0,         0.1085,   0.0915,    0.0805,    0.0735,    0.0725,    0.0711,   0.0696,   0.067,    0.0666,
+       0.0658,   0.0647,   0.0651,    0.0641,    0.0626,    0.0626,    0.061,    0.0619,   0.0616,   0.0607,
+       0.05947,  0.0577,   0.0745,    0.066,     0.0715,    0.1636,    0.141,    0.071,    0.174,    0.1755,
+       0.2025,   0.1465,   0.1815,    0.094,     0.078,     0.093,     0.0943};
 
-  static const float Tc[kArraySize] = {
-        0,       190.7f,    305.4f,     369.9f,     408.1f,     425.2f,     433.8f,    460.4f,    469.5f,    488.7f,
-      499.9f,    504.7f,    496.5f,     507.3f,     520.3f,     531.5f,     530.3f,    535.6f,    540.8f,    540.3f,
-      543.6f,    568.6f,    562.1f,     592.0f,      33.3f,     133.0f,     373.6f,      5.3f,    151.0f,    126.2f,
-      154.8f,    304.2f,    132.5f,     282.85f,    364.55f,    405.55f,   308.85f};
+  static const double Tc[kArraySize] = {
+        0,       190.7,    305.4,     369.9,     408.1,     425.2,     433.8,    460.4,    469.5,    488.7,
+      499.9,    504.7,    496.5,     507.3,     520.3,     531.5,     530.3,    535.6,    540.8,    540.3,
+      543.6,    568.6,    562.1,     592.0,      33.3,     133.0,     373.6,      5.3,    151.0,    126.2,
+      154.8,    304.2,    132.5,     282.85,    364.55,    405.55,   308.85};
 
-  static const float Pc[kArraySize] = {
-        0,        45.8f,     48.2f,      42.0f,      36.0f,      37.5f,      31.6f,     32.9f,     33.3f,     30.7f,
-       30.9f,     30.8f,     30.0f,      29.9f,      27.4f,      29.8f,      27.2f,     28.1f,     28.6f,     27.0f,
-       25.4f,     24.6f,     48.6f,      41.6f,      12.8f,      34.5f,      88.9f,      2.26f,    48.0f,     33.5f,
-       50.1f,     72.9f,     37.17f,     50.7f,      45.4f,     111.5f,     61.6f};
+  static const double Pc[kArraySize] = {
+        0,        45.8,     48.2,      42.0,      36.0,      37.5,      31.6,     32.9,     33.3,     30.7,
+       30.9,     30.8,     30.0,      29.9,      27.4,      29.8,      27.2,     28.1,     28.6,     27.0,
+       25.4,     24.6,     48.6,      41.6,      12.8,      34.5,      88.9,      2.26,    48.0,     33.5,
+       50.1,     72.9,     37.17,     50.7,      45.4,     111.5,     61.6};
 
-  static const float Zc[kArraySize] = {
-       0,         0.29f,     0.285f,     0.277f,     0.283f,     0.274f,     0.269f,    0.268f,    0.269f,    0.273f,
-       0.27f,     0.273f,    0.27f,      0.264f,     0.27f,      0.269f,     0.267f,    0.268f,    0.267f,    0.259f,
-       0.274f,    0.256f,    0.274f,     0.271f,     0.304f,     0.294f,     0.268f,    0.3f,      0.296f,    0.291f,
-       0.292f,    0.274f,    0.291f,     0.27f,      0.274f,     0.242f,     0.274f};
+  static const double Zc[kArraySize] = {
+       0,         0.29,     0.285,     0.277,     0.283,     0.274,     0.269,    0.268,    0.269,    0.273,
+       0.27,     0.273,    0.27,      0.264,     0.27,      0.269,     0.267,    0.268,    0.267,    0.259,
+       0.274,    0.256,    0.274,     0.271,     0.304,     0.294,     0.268,    0.3,      0.296,    0.291,
+       0.292,    0.274,    0.291,     0.27,      0.274,     0.242,     0.274};
 
   // Scalare tablouri (*) — executată o singură dată la pornire
-  for (int i = 0; i <= kNumComponents; i++) { B[i]    /= 100.0f;    }
-  for (int i = 0; i <= kNumComponents; i++) { C[i]    *= 100000.0f; }
-  for (int i = 0; i <= kNumComponents; i++) { b[i]    /= 100.0f;    }
-  for (int i = 0; i <= kNumComponents; i++) { c[i]    *= 100000.0f; }
-  for (int i = 0; i <= kNumComponents; i++) { alfa[i] /= 1000.0f;   }
-  for (int i = 0; i <= kNumComponents; i++) { gama[i] /= 100.0f;    }
-  for (int i = 0; i <= kNumComponents; i++) { V[i]    /= 1000.0f;   }
-  for (int i = 0; i <= kNumComponents; i++) { et[i]   /= 10000.0f;  }
+  for (int i = 0; i <= kNumComponents; i++) { B[i]    /= 100.0;    }
+  for (int i = 0; i <= kNumComponents; i++) { C[i]    *= 100000.0; }
+  for (int i = 0; i <= kNumComponents; i++) { b[i]    /= 100.0;    }
+  for (int i = 0; i <= kNumComponents; i++) { c[i]    *= 100000.0; }
+  for (int i = 0; i <= kNumComponents; i++) { alfa[i] /= 1000.0;   }
+  for (int i = 0; i <= kNumComponents; i++) { gama[i] /= 100.0;    }
+  for (int i = 0; i <= kNumComponents; i++) { V[i]    /= 1000.0;   }
+  for (int i = 0; i <= kNumComponents; i++) { et[i]   /= 10000.0;  }
 
   std::printf("\033[2J\033[H");   // clear screen (ANSI)
   std::printf("%s", kBoldYellow);
@@ -328,9 +332,10 @@ int main() {
   // ── Compoziție: încărcare din fișier sau introducere manuală ──────────────
   bool comp_loaded = false;
   {
-    int tmp_tip; float tmp_d1, tmp_d2;
+    int tmp_tip; double tmp_d1, tmp_d2;
     (void)tmp_tip; (void)tmp_d1; (void)tmp_d2;
-    FILE* cf = std::fopen(kCompFile, "r");
+    FILE* cf = nullptr;
+    fopen_s(&cf, kCompFile, "r");
     if (cf) {
       std::fclose(cf);
       std::printf("%s\n  Există o compoziție salvată. O refolosiți? [d/n]: %s",
@@ -348,7 +353,7 @@ int main() {
   }
 
   if (!comp_loaded) {
-    float sum;
+    double sum;
     do {
       std::printf("\n%s Compoziția în fracții molare a amestecului de gaze:%s\n",
                   kBoldCyan, kReset);
@@ -389,19 +394,19 @@ int main() {
       std::printf("%s  Amoniac               : %s", kCyan, kReset); ReadFloat(&x[35]);
       std::printf("%s  Acetilenă             : %s", kCyan, kReset); ReadFloat(&x[36]);
 
-      sum = 0.0f;
+      sum = 0.0;
       for (int i = 1; i <= kNumComponents; i++) sum += x[i];
 
-      if (std::fabs(sum - 1.0f) > kSumTolerance) {
+      if (std::fabs(sum - 1.0) > kSumTolerance) {
         std::printf("%s\n  Suma fracțiilor molare = %.6f  ≠  1.%s\n", kBoldRed, sum, kReset);
         std::printf("%s  Normalizați automat? [d/n]  (n = reintroduceți): %s", kYellow, kReset);
         if (AskYesNo()) {
           for (int i = 1; i <= kNumComponents; i++) x[i] /= sum;
-          sum = 1.0f;
+          sum = 1.0;
           std::printf("%s  Fracțiile au fost normalizate.%s\n", kBoldGreen, kReset);
         }
       }
-    } while (std::fabs(sum - 1.0f) > kSumTolerance);
+    } while (std::fabs(sum - 1.0) > kSumTolerance);
 
     std::printf("%s\n  Salvați compoziția? [d/n]: %s", kCyan, kReset);
     if (AskYesNo()) SaveComposition(x);
@@ -409,12 +414,12 @@ int main() {
 
   // ── Calcul constante BWR ale amestecului ──────────────────────────────────
   BwrConst bwr;
-  float tcam = 0.0f, pcam = 0.0f, zcam = 0.0f, mx = 0.0f;
+  double tcam = 0.0, pcam = 0.0, zcam = 0.0, mx = 0.0;
 
   for (int i = 1; i <= kNumComponents; i++) {
     for (int j = 1; j <= kNumComponents; j++) {
-      float kk = 1 - 8.0f * std::sqrt(V[i] * V[j])
-               / std::pow(std::pow(V[i], 1.0f/3) + std::pow(V[j], 1.0f/3), 3);
+      double kk = 1 - 8.0 * std::sqrt(V[i] * V[j])
+               / std::pow(std::pow(V[i], 1.0/3) + std::pow(V[j], 1.0/3), 3);
       bwr.a0    += x[i] * x[j] * std::sqrt(A[i] * A[j]) * (1 - kk);
       bwr.b0    += x[i] * x[j] * std::sqrt(B[i] * B[j]);
       bwr.c0    += x[i] * x[j] * std::sqrt(C[i] * C[j]) * std::pow(1 - kk, 3);
@@ -425,19 +430,19 @@ int main() {
   for (int i = 1; i <= kNumComponents; i++) {
     for (int j = 1; j <= kNumComponents; j++) {
       for (int l = 1; l <= kNumComponents; l++) {
-        float k1 = 1 - 8.0f * std::sqrt(V[i] * V[j])
-                 / std::pow(std::pow(V[i], 1.0f/3) + std::pow(V[j], 1.0f/3), 3);
-        float k2 = 1 - 8.0f * std::sqrt(V[i] * V[l])
-                 / std::pow(std::pow(V[i], 1.0f/3) + std::pow(V[l], 1.0f/3), 3);
-        float k3 = 1 - 8.0f * std::sqrt(V[j] * V[l])
-                 / std::pow(std::pow(V[j], 1.0f/3) + std::pow(V[l], 1.0f/3), 3);
+        double k1 = 1 - 8.0 * std::sqrt(V[i] * V[j])
+                 / std::pow(std::pow(V[i], 1.0/3) + std::pow(V[j], 1.0/3), 3);
+        double k2 = 1 - 8.0 * std::sqrt(V[i] * V[l])
+                 / std::pow(std::pow(V[i], 1.0/3) + std::pow(V[l], 1.0/3), 3);
+        double k3 = 1 - 8.0 * std::sqrt(V[j] * V[l])
+                 / std::pow(std::pow(V[j], 1.0/3) + std::pow(V[l], 1.0/3), 3);
         bwr.a     += x[i] * x[j] * x[l]
-                   * std::pow(a[i]*a[j]*a[l] * (1-k1)*(1-k2)*(1-k3), 1.0f/3);
-        bwr.b     += x[i] * x[j] * x[l] * std::pow(b[i]*b[j]*b[l], 1.0f/3);
+                   * std::pow(a[i]*a[j]*a[l] * (1-k1)*(1-k2)*(1-k3), 1.0/3);
+        bwr.b     += x[i] * x[j] * x[l] * std::pow(b[i]*b[j]*b[l], 1.0/3);
         bwr.c     += x[i] * x[j] * x[l]
-                   * std::pow(c[i]*c[j]*c[l], 1.0f/3) * (1-k1)*(1-k2)*(1-k3);
+                   * std::pow(c[i]*c[j]*c[l], 1.0/3) * (1-k1)*(1-k2)*(1-k3);
         bwr.alpha += x[i] * x[j] * x[l]
-                   * std::pow(alfa[i]*alfa[j]*alfa[l], 1.0f/3);
+                   * std::pow(alfa[i]*alfa[j]*alfa[l], 1.0/3);
       }
     }
   }
@@ -450,17 +455,17 @@ int main() {
     mx             += x[i] * std::sqrt(m[i]);
   }
 
-  float roc_crit = pcam / (kGasConstantR * zcam * tcam);
-  float csi      = std::pow(tcam, 6)
-                 / std::pow(bwr.molar_mass, 0.5f)
-                 / std::pow(pcam, 2.0f/3.0f);
+  double roc_crit = pcam / (kGasConstantR * zcam * tcam);
+  double csi      = std::pow(tcam, 6)
+                 / std::pow(bwr.molar_mass, 0.5)
+                 / std::pow(pcam, 2.0/3.0);
 
   static const CountryRef kRefTable[] = {
-    {"Rom\xC3\xA2nia / UE  (DIN 1343)",  2, { 0.0f,  15.0f  }, {"Nm\xC2\xB3/h", "Sm\xC2\xB3/h"}},
-    {"ISO 13443  /  UK / Italia",         1, {15.0f,   0.0f  }, {"Sm\xC2\xB3/h", ""}},
-    {"SUA \xe2\x80\x94 AGA-3  (60\xC2\xB0""F)", 1, {15.56f, 0.0f}, {"Sm\xC2\xB3/h", ""}},
-    {"Rusia \xe2\x80\x94 GOST 30319-1",  1, {20.0f,   0.0f  }, {"m\xC2\xB3/h",  ""}},
-    {"Personalizat",                      1, { 0.0f,   0.0f  }, {"m\xC2\xB3/h",  ""}},
+    {"Rom\xC3\xA2nia / UE  (DIN 1343)",  2, { 0.0,  15.0  }, {"Nm\xC2\xB3/h", "Sm\xC2\xB3/h"}},
+    {"ISO 13443  /  UK / Italia",         1, {15.0,   0.0  }, {"Sm\xC2\xB3/h", ""}},
+    {"SUA \xe2\x80\x94 AGA-3  (60\xC2\xB0""F)", 1, {15.56, 0.0}, {"Sm\xC2\xB3/h", ""}},
+    {"Rusia \xe2\x80\x94 GOST 30319-1",  1, {20.0,   0.0  }, {"m\xC2\xB3/h",  ""}},
+    {"Personalizat",                      1, { 0.0,   0.0  }, {"m\xC2\xB3/h",  ""}},
   };
   static constexpr int kNRef = 5;
 
@@ -484,7 +489,7 @@ int main() {
     ReadFloat(&ref.t[0]);
   }
 
-  float ror_ref[2] = {};
+  double ror_ref[2] = {};
   for (int i = 0; i < ref.n; i++) {
     ror_ref[i] = CalcDensity(ref.t[i], 1, bwr);
     std::printf("%s  Densitatea la %5.2f\xC2\xB0""C / 101.325 kPa     :%s %s%f%s %s[kg/m\xC2\xB3]%s\n",
@@ -494,11 +499,11 @@ int main() {
   // ── Buclă exterioară: selecția dispozitivului de măsurare ─────────────────
   for (;;) {
     int   tip_raw;
-    float d_int, d_orif;
+    double d_int, d_orif;
 
     // Încearcă să refolosească configurația salvată
     {
-      int   sv_tip; float sv_d_int, sv_d_orif;
+      int   sv_tip; double sv_d_int, sv_d_orif;
       if (LoadConfig(&sv_tip, &sv_d_int, &sv_d_orif)
           && sv_tip >= kTipMin && sv_tip <= kTipMax) {
         std::printf(
@@ -538,7 +543,7 @@ int main() {
 
     // Buclă interioară: calcul pentru condiții diferite T/P cu același dispozitiv
     for (;;) {
-      float temperatura, presiunea, presiunea_dif;
+      double temperatura, presiunea, presiunea_dif;
       std::printf("\n\n%s  Temperatura [°C]             : %s", kCyan, kReset);
       ReadFloat(&temperatura);
       std::printf("%s  Presiunea [kPa]              : %s", kCyan, kReset);
@@ -553,34 +558,34 @@ int main() {
       ReadFloat(&presiunea_dif);
       std::printf("  %c\n", 7);
 
-      float ro = CalcDensity(temperatura, presiunea / kKpaPerAtm, bwr);
+      double ro = CalcDensity(temperatura, presiunea / kKpaPerAtm, bwr);
       std::printf("  Densitatea (t,p)                       : %s%f%s [kg/m³]\n",
                   kBoldGreen, ro, kReset);
 
-      float roc_red = ro / roc_crit;
-      float eta = 0.0f;
+      double roc_red = ro / roc_crit;
+      double eta = 0.0;
       for (int i = 1; i <= kNumComponents; i++) {
-        eta += (1 + 0.323f * std::log((temperatura + kKelvinOffset) / cs[i]))
-             / (1 + 0.323f * std::log(kKelvinOffset / cs[i]))
+        eta += (1 + 0.323 * std::log((temperatura + kKelvinOffset) / cs[i]))
+             / (1 + 0.323 * std::log(kKelvinOffset / cs[i]))
              * std::sqrt((temperatura + kKelvinOffset) / kKelvinOffset)
              * et[i] * x[i] * std::sqrt(m[i]);
       }
       eta  = eta / mx;
-      eta += 10.8e-8f / csi
-           * std::pow(std::exp(1.439f * roc_red) - std::exp(-1.111f * roc_red),
-                      1.358f);
+      eta += 10.8e-8 / csi
+           * std::pow(std::exp(1.439 * roc_red) - std::exp(-1.111 * roc_red),
+                      1.358);
       std::printf("  Viscozitatea dinamică (t,p)            : %s%f%s [μPa·s]\n",
                   kBoldGreen, eta * 1000000, kReset);
 
       FlowResult flow;
-      float qm = CalcMassFlow(presiunea_dif, presiunea, temperatura,
+      double qm = CalcMassFlow(presiunea_dif, presiunea, temperatura,
                        tip, d_int, d_orif, ro, eta, &flow);
-      if (qm == 0.0f) break;  // eroare -> reselect dispozitiv
+      if (qm == 0.0) break;  // eroare -> reselect dispozitiv
 
       std::printf("  Debitul masic (t,p)                    : %s%7.4f%s [kg/s]\n",
                   kBoldGreen, qm, kReset);
       for (int i = 0; i < ref.n; i++) {
-        float qhref = 3600.0f / ror_ref[i] * qm;
+        double qhref = 3600.0 / ror_ref[i] * qm;
         std::printf("  Debitul vol.  (%5.2f\xC2\xB0""C / 101.325 kPa)  : %s%7.2f%s [%s]\n",
                     ref.t[i], kBoldGreen, qhref, kReset, ref.label[i]);
       }
