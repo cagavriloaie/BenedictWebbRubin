@@ -110,6 +110,14 @@ struct FlowResult {
   float pierderea = 0.0f;  // pierderea de presiune prin strangulare [kPa]
 };
 
+// Condiții de referință volumetrică (un preset = 1 sau 2 perechi T/101.325 kPa)
+struct CountryRef {
+  const char* tara;      // denumire țară/standard
+  int         n;         // număr de condiții (1 sau 2)
+  float       t[2];      // temperaturi de referință [°C]
+  const char* label[2];  // etichete unitate (ex. "Nm³/h", "Sm³/h")
+};
+
 // Returnează true dacă tipul este o diafragmă (prize unghi, flanșă sau D-D/2).
 // Folosit pentru a alege formula factorului de expansibilitate ε.
 constexpr bool IsDiaphragm(TipDispozitiv tip) {

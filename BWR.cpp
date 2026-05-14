@@ -319,8 +319,7 @@ int main() {
       "  ║   ▸ Debit gaze         —  ISO 5167-2:2003              ║\n"
       "  ║   ▸ Coef. debit C      —  Reader-Harris / Gallagher    ║\n"
       "  ║   ▸ 36 componenți      —  9 dispozitive de strangulare ║\n"
-      "  ║   ▸ Condiții normale   —  0°C / 101.325 kPa (Nm³/h)   ║\n"
-      "  ║   ▸ Condiții standard  —  15°C / 101.325 kPa (Sm³/h)  ║\n"
+      "  ║   ▸ Ref. volumetrice   —  selectabile per \xC8\x9B" "ar\xC4\x83         \xe2\x95\x91\n"
       "  ║                                                        ║\n"
       "  ╚════════════════════════════════════════════════════════╝\n"
       "\n");
@@ -456,12 +455,41 @@ int main() {
                  / std::pow(bwr.molar_mass, 0.5f)
                  / std::pow(pcam, 2.0f/3.0f);
 
-  float ror_n = CalcDensity(0,  1, bwr);
-  float ror_s = CalcDensity(15, 1, bwr);
-  std::printf("\n%s  Densitatea în condiții normale   (0°C / 101.325 kPa) :%s %s%f%s %s[kg/m³]%s\n",
-      kBoldCyan, kReset, kBoldGreen, ror_n, kReset, kCyan, kReset);
-  std::printf(  "%s  Densitatea în condiții standard (15°C / 101.325 kPa) :%s %s%f%s %s[kg/m³]%s\n",
-      kBoldCyan, kReset, kBoldGreen, ror_s, kReset, kCyan, kReset);
+  static const CountryRef kRefTable[] = {
+    {"Rom\xC3\xA2nia / UE  (DIN 1343)",  2, { 0.0f,  15.0f  }, {"Nm\xC2\xB3/h", "Sm\xC2\xB3/h"}},
+    {"ISO 13443  /  UK / Italia",         1, {15.0f,   0.0f  }, {"Sm\xC2\xB3/h", ""}},
+    {"SUA \xe2\x80\x94 AGA-3  (60\xC2\xB0""F)", 1, {15.56f, 0.0f}, {"Sm\xC2\xB3/h", ""}},
+    {"Rusia \xe2\x80\x94 GOST 30319-1",  1, {20.0f,   0.0f  }, {"m\xC2\xB3/h",  ""}},
+    {"Personalizat",                      1, { 0.0f,   0.0f  }, {"m\xC2\xB3/h",  ""}},
+  };
+  static constexpr int kNRef = 5;
+
+  std::printf("\n%s  Condi\xC8\x9Bii de referin\xC8\x9B\xC4\x83 volumetric\xC4\x83:%s\n\n",
+              kBoldCyan, kReset);
+  std::printf("%s  1.  Rom\xC3\xA2nia / UE  (DIN 1343)    \xe2\x80\x94   0\xC2\xB0""C \xC8\x99i 15\xC2\xB0""C / 101.325 kPa  [Nm\xC2\xB3/h] \xC8\x99i [Sm\xC2\xB3/h]%s\n", kCyan, kReset);
+  std::printf("%s  2.  ISO 13443  /  UK / Italia       \xe2\x80\x94  15\xC2\xB0""C / 101.325 kPa  [Sm\xC2\xB3/h]%s\n",       kCyan, kReset);
+  std::printf("%s  3.  SUA \xe2\x80\x94 AGA-3  (60\xC2\xB0""F)          \xe2\x80\x94  15.56\xC2\xB0""C / 101.325 kPa  [Sm\xC2\xB3/h]%s\n",  kCyan, kReset);
+  std::printf("%s  4.  Rusia \xe2\x80\x94 GOST 30319-1         \xe2\x80\x94  20\xC2\xB0""C / 101.325 kPa  [m\xC2\xB3/h]%s\n",           kCyan, kReset);
+  std::printf("%s  5.  Personalizat                    \xe2\x80\x94  T [\xC2\xB0""C] introdus manual  [m\xC2\xB3/h]%s\n",           kCyan, kReset);
+
+  int ref_sel = 0;
+  do {
+    std::printf("%s\n  Selecta\xC8\x9Bi (1\xe2\x80\x93" "5)  > %s", kMagenta, kReset);
+    ReadInt(&ref_sel);
+  } while (ref_sel < 1 || ref_sel > kNRef);
+
+  CountryRef ref = kRefTable[ref_sel - 1];
+  if (ref_sel == kNRef) {
+    std::printf("%s  Temperatura de referin\xC8\x9B\xC4\x83 [\xC2\xB0""C]  : %s", kBoldCyan, kReset);
+    ReadFloat(&ref.t[0]);
+  }
+
+  float ror_ref[2] = {};
+  for (int i = 0; i < ref.n; i++) {
+    ror_ref[i] = CalcDensity(ref.t[i], 1, bwr);
+    std::printf("%s  Densitatea la %5.2f\xC2\xB0""C / 101.325 kPa     :%s %s%f%s %s[kg/m\xC2\xB3]%s\n",
+                kBoldCyan, ref.t[i], kReset, kBoldGreen, ror_ref[i], kReset, kCyan, kReset);
+  }
 
   // ── Buclă exterioară: selecția dispozitivului de măsurare ─────────────────
   for (;;) {
@@ -549,14 +577,13 @@ int main() {
                        tip, d_int, d_orif, ro, eta, &flow);
       if (qm == 0.0f) break;  // eroare -> reselect dispozitiv
 
-      float qhn = 3600 / ror_n * qm;
-      float qhs = 3600 / ror_s * qm;
       std::printf("  Debitul masic (t,p)                    : %s%7.4f%s [kg/s]\n",
                   kBoldGreen, qm, kReset);
-      std::printf("  Debitul vol.  (0°C / 101.325 kPa abs)  : %s%7.2f%s [Nm³/h]\n",
-                  kBoldGreen, qhn, kReset);
-      std::printf("  Debitul vol. (15°C / 101.325 kPa abs)  : %s%7.2f%s [Sm³/h]\n",
-                  kBoldGreen, qhs, kReset);
+      for (int i = 0; i < ref.n; i++) {
+        float qhref = 3600.0f / ror_ref[i] * qm;
+        std::printf("  Debitul vol.  (%5.2f\xC2\xB0""C / 101.325 kPa)  : %s%7.2f%s [%s]\n",
+                    ref.t[i], kBoldGreen, qhref, kReset, ref.label[i]);
+      }
       std::printf("  Debitul vol.  (t,p)                    : %s%7.2f%s [m³/h]\n",
                   kBoldGreen, 3600 / ro * qm, kReset);
       std::printf("  Viteza medie a gazului                 : %s%.2f%s [m/s]\n",
