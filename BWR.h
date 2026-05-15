@@ -32,7 +32,7 @@ enum class ErrorCode {
   kReynolds           = 4,
 };
 
-constexpr int kNumComponents = 36;
+constexpr int kNumComponents = 35;
 constexpr int kArraySize     = kNumComponents + 1;
 
 constexpr double kKelvinOffset      = 273.15;
@@ -47,6 +47,28 @@ constexpr double kRoMin             = 1.0e-4;
 constexpr double kRoMax             = 5.0;
 constexpr double kSumTolerance      = 1.0e-3;  // tolerance for Σx = 1 check
 
+// Thermal expansion coefficients (linear, per °C, at 20 °C reference)
+constexpr double kThermalExpPipe    = 12.2e-6;  // carbon steel pipe (D), ISO 5167
+constexpr double kThermalExpOrifice = 16.5e-6;  // stainless steel orifice plate (d)
+
+// ISO 5167 flanged-tap offset [m] = 25.4 mm = 1 inch
+constexpr double kFlangeTapM = 0.0254;
+
+// Factor in Qm formula: 2 × (Pa/kPa) so Δp[kPa]·ρ enters as SI
+constexpr double k2kPaFactor = 2000.0;
+
+// BWRS quadratic mixing-rule coefficient (Starling 1973)
+constexpr double kBwrsMixCoef = 8.0;
+
+// Chapman-Enskog polar-correction parameter (viscosity dilute-gas term)
+constexpr double kChapEnskog = 0.323;
+
+// High-density viscosity correction (Lucas / Chung-Lee-Starling)
+constexpr double kViscHighA    = 10.8e-8;  // prefactor
+constexpr double kViscHighExp1 = 1.439;    // positive-exponential argument coefficient
+constexpr double kViscHighExp2 = 1.111;    // negative-exponential argument coefficient
+constexpr double kViscHighPow  = 1.358;    // outer power
+
 // ANSI color codes
 constexpr const char* kReset      = "\033[0m";
 constexpr const char* kBoldYellow = "\033[1;33m";
@@ -54,6 +76,7 @@ constexpr const char* kBoldWhite  = "\033[1;37m";
 constexpr const char* kBoldGreen  = "\033[1;32m";
 constexpr const char* kBoldRed    = "\033[1;31m";
 constexpr const char* kYellow     = "\033[33m";
+constexpr const char* kCyan       = "\033[1;36m";
 
 constexpr int kTipMin =
     static_cast<int>(TipDispozitiv::kDiafragmaUnghi);
@@ -71,8 +94,12 @@ const char kTipDisp[] =
     "  7.  Tub Venturi clasic — convergent prelucrat\n"
     "  8.  Tub Venturi clasic — convergent brut din tablă sudată\n"
     "  9.  Ajutaj Venturi\n\n"
-    "  Selectați (1–9)  >";
+    "  Selectați (1–9) >";
 
+// Funcție: TipName
+// Intrări: tip — codul dispozitivului de strangulare (TipDispozitiv)
+// Ieșire:  șir cu denumirea dispozitivului; "" pentru valoare necunoscută
+// Scop:    conversie enum → text pentru afișare în consolă
 constexpr const char* TipName(TipDispozitiv tip) {
   switch (tip) {
     case TipDispozitiv::kDiafragmaUnghi:   return "Diafragmă cu prize în unghi";
@@ -84,20 +111,25 @@ constexpr const char* TipName(TipDispozitiv tip) {
     case TipDispozitiv::kVenturiPrelucrat: return "Tub Venturi clasic — convergent prelucrat";
     case TipDispozitiv::kVenturiTabla:     return "Tub Venturi clasic — convergent brut din tablă sudată";
     case TipDispozitiv::kAjutajVenturi:    return "Ajutaj Venturi";
+    default:                               return "";
   }
-  return "";
 }
 
-// Constantele BWR ale amestecului, calculate o singură dată din compoziție.
-// Ecuația: p = ρRT + (B₀RT−A₀−C₀/T²)ρ² + (bRT−a)ρ³ + aαρ⁶ + (c/T²)ρ³(1+γρ²)exp(−γρ²)
+// Constantele BWRS ale amestecului, calculate o singură dată din compoziție.
+// Ecuația Starling (1973):
+//   p = ρRT + (B₀RT−A₀−C₀/T²+D₀/T³−E₀/T⁴)ρ²
+//           + (bRT−a−d/T)ρ³ + α(a+d/T)ρ⁶ + (c/T²)ρ³(1+γρ²)exp(−γρ²)
 struct BwrConst {
-  double a0         = 0.0;  // A₀ — forțe atractive de ordin 2  (termen −A₀ρ²)
-  double b0         = 0.0;  // B₀ — excludere de volum de ordin 2 (termen +B₀RTρ²)
-  double c0         = 0.0;  // C₀ — corecție termică de ordin 2  (termen −C₀ρ²/T²)
-  double a          = 0.0;  // a  — forțe atractive de ordin 3  (termen −aρ³ și +aαρ⁶)
-  double b          = 0.0;  // b  — excludere de volum de ordin 3 (termen +bRTρ³)
-  double c          = 0.0;  // c  — corecție termică de ordin 3  (termen +cρ³/T²·exp)
-  double alpha      = 0.0;  // α  — amplitudine termen de densitate ρ⁶
+  double a0         = 0.0;  // A₀ — forțe atractive de ordin 2
+  double b0         = 0.0;  // B₀ — excludere de volum de ordin 2
+  double c0         = 0.0;  // C₀ — corecție termică 1/T²
+  double d0         = 0.0;  // D₀ — corecție termică 1/T³ (Starling)
+  double e0         = 0.0;  // E₀ — corecție termică 1/T⁴ (Starling)
+  double a          = 0.0;  // a  — forțe atractive de ordin 3
+  double b          = 0.0;  // b  — excludere de volum de ordin 3
+  double c          = 0.0;  // c  — corecție termică de ordin 3
+  double dv         = 0.0;  // d  — corecție 1/T la virial terț (Starling)
+  double alpha      = 0.0;  // α  — amplitudine termen ρ⁶
   double gamma      = 0.0;  // γ  — parametru Gaussian în exp(−γρ²)
   double molar_mass = 0.0;  // M  — masa molară a amestecului [g/mol]
 };
@@ -114,22 +146,24 @@ struct FlowResult {
 struct CountryRef {
   const char* tara;      // denumire țară/standard
   int         n;         // număr de condiții (1 sau 2)
-  double       t[2];      // temperaturi de referință [°C]
+  double      t[2];      // temperaturi de referință [°C]
   const char* label[2];  // etichete unitate (ex. "Nm³/h", "Sm³/h")
 };
 
-// Returnează true dacă tipul este o diafragmă (prize unghi, flanșă sau D-D/2).
-// Folosit pentru a alege formula factorului de expansibilitate ε.
+// Funcție: IsDiaphragm
+// Intrări: tip — codul dispozitivului de strangulare
+// Ieșire:  true dacă tipul este diafragmă (unghi / flanșă / D-D/2), false altfel
+// Scop:    selecția formulei corecte pentru factorul de expansibilitate ε
 constexpr bool IsDiaphragm(TipDispozitiv tip) {
   return static_cast<int>(tip) <=
          static_cast<int>(TipDispozitiv::kDiafragmaDD2);
 }
 
-// Calculează coeficientul de debit C [-] al dispozitivului de strangulare.
-// Pentru diafragme: ecuația Reader-Harris/Gallagher (ISO 5167-2:2003, §8.3.2).
-// d_m  — diametrul interior al conductei la locul de măsurare [m]
-// beta — raportul de strangulare β = d/D [-]
-// re   — numărul Reynolds în conductă (valoarea curentă din iterație) [-]
+// Funcție: DischargeCoefficient
+// Intrări: tip — tipul dispozitivului; d_m — diametrul interior la locul de măsurare [m];
+//          beta — β = d/D [-]; re — numărul Reynolds curent din iterație [-]
+// Ieșire:  coeficientul de debit C [-]
+// Scop:    calculul C conform ISO 5167-2/3/4 (ecuația Reader-Harris/Gallagher pt. diafragme)
 double DischargeCoefficient(TipDispozitiv tip, double d_m, double beta, double re) {
   double coef = 0.0;
   switch (tip) {
@@ -141,7 +175,7 @@ double DischargeCoefficient(TipDispozitiv tip, double d_m, double beta, double r
       if (tip == TipDispozitiv::kDiafragmaUnghi) {
         L1 = 0.0;    L2p = 0.0;            // prize în unghi
       } else if (tip == TipDispozitiv::kDiafragmaFlansa) {
-        L1 = 0.0254 / d_m;  L2p = L1;       // prize la flanșă: 25,4 mm / D
+        L1 = kFlangeTapM / d_m;  L2p = L1;   // prize la flanșă: 25,4 mm / D
       } else {
         L1 = 1.0;    L2p = 0.47;           // prize la D și D/2
       }
@@ -160,7 +194,7 @@ double DischargeCoefficient(TipDispozitiv tip, double d_m, double beta, double r
            - 0.031 * (M2 - 0.8 * std::pow(M2, 1.1))
              * std::pow(beta, 1.3);
       if (d_m < 0.07112)  // corecție pentru D < 71,12 mm
-        coef += 0.011 * (0.75 - beta) * (2.8 - d_m / 0.0254);
+        coef += 0.011 * (0.75 - beta) * (2.8 - d_m / kFlangeTapM);
       break;
     }
     case TipDispozitiv::kAjutajIsa:
@@ -170,8 +204,8 @@ double DischargeCoefficient(TipDispozitiv tip, double d_m, double beta, double r
       break;
     case TipDispozitiv::kAjutajRazaLunga:
       coef = 0.9965
-           - 0.00653 * std::pow(beta, 0.5)
-           * std::pow(kReynoldsIsoRef / re, 0.5);
+           - 0.00653 * std::sqrt(beta)
+           * std::sqrt(kReynoldsIsoRef / re);
       break;
     case TipDispozitiv::kVenturiBrut:
       coef = 0.984;
@@ -185,21 +219,25 @@ double DischargeCoefficient(TipDispozitiv tip, double d_m, double beta, double r
     case TipDispozitiv::kAjutajVenturi:
       coef = 0.9858 - 0.196 * std::pow(beta, 4.5);
       break;
+    default:
+      break;
   }
   return coef;
 }
 
-// Calculează coeficientul de viteză α = C / √(1 − β⁴) [-].
-// Înglobează atât coeficientul de debit C cât și factorul geometric 1/√(1−β⁴)
-// pentru a obține direct factorul de amplitudine din ecuația debitului masic.
+// Funcție: VelocityCoefficient
+// Intrări: tip, d_m, beta, re — aceleași ca DischargeCoefficient
+// Ieșire:  coeficientul de viteză α = C / √(1 − β⁴) [-]
+// Scop:    calculul factorului de amplitudine din ecuația debitului masic
 double VelocityCoefficient(TipDispozitiv tip, double d_m, double beta, double re) {
-  return std::pow(1 - std::pow(beta, 4), -0.5)
-       * DischargeCoefficient(tip, d_m, beta, re);
+  return DischargeCoefficient(tip, d_m, beta, re)
+       / std::sqrt(1 - std::pow(beta, 4));
 }
 
-// Afișează pe consolă mesajul de eroare corespunzător codului de eroare.
-// Parametrul red este folosit doar pentru ErrorCode::kReynolds, pentru a
-// indica valoarea numerică a lui Re care a depășit domeniul ISO 5167.
+// Funcție: PrintError
+// Intrări: code — codul de eroare (ErrorCode); red — valoarea Re (relevantă doar pt. kReynolds)
+// Ieșire:  —
+// Scop:    afișează pe consolă mesajul de eroare ISO 5167 corespunzător codului
 void PrintError(ErrorCode code, double red) {
   std::printf("%s", kBoldRed);
   switch (code) {
@@ -217,28 +255,23 @@ void PrintError(ErrorCode code, double red) {
     case ErrorCode::kReynolds:
       std::printf("\n  Număr Reynolds (%g) necorespunzător\n", red);
       break;
+    default:
+      break;
   }
   std::printf("%s", kReset);
 }
 
-// Calculează debitul masic Qm [kg/s] prin dispozitivul de strangulare.
-// Înainte de calcul validează domeniile ISO 5167 pentru D, d, β și Re.
-// Algoritmul iterează corecția cu Re până la |Qm_k − Qm_{k-1}| < kReynoldsTolerance.
-// Returnează 0.0 și afișează eroarea dacă vreun parametru depășește domeniul.
-// dp     — presiunea diferențială Δp [kPa]
-// p      — presiunea absolută [kPa]
-// t      — temperatura fluidului [°C]
-// tip    — tipul dispozitivului de strangulare
-// d_int  — diametrul interior al conductei la temperatura de referință 20 °C [mm]
-// d_orif — diametrul orificiului la temperatura de referință 20 °C [mm]
-// ro     — densitatea gazului la condiții (t, p) [kg/m³]
-// eta    — viscozitatea dinamică la condiții (t, p) [Pa·s]
-// out    — ieșire: viteza medie [m/s] și pierderea de presiune [kPa]
+// Funcție: CalcMassFlow
+// Intrări: dp — Δp [kPa]; p — presiune absolută [kPa]; t — temperatură [°C];
+//          tip — tipul dispozitivului; d_int — D la 20 °C [mm]; d_orif — d la 20 °C [mm];
+//          ro — densitate (t,p) [kg/m³]; eta — viscozitate dinamică (t,p) [Pa·s]; out — structură ieșire hidraulică
+// Ieșire:  debitul masic Qm [kg/s]; câmpurile FlowResult prin *out; 0.0 la eroare
+// Scop:    validare domeniu ISO 5167, calcul Qm prin iterație pe Re
 double CalcMassFlow(double dp, double p, double t,
             TipDispozitiv tip, double d_int, double d_orif,
             double ro, double eta, FlowResult* out) {
-  double d_i = d_int  * (1 + 0.0000122 * (t - kRefTempCelsius));
-  double d_o = d_orif * (1 + 0.0000165 * (t - kRefTempCelsius));
+  double d_i = d_int  * (1 + kThermalExpPipe    * (t - kRefTempCelsius));
+  double d_o = d_orif * (1 + kThermalExpOrifice * (t - kRefTempCelsius));
 
   if ((d_i < 50)
       || (d_i > 1000 && tip == TipDispozitiv::kDiafragmaUnghi)
@@ -249,6 +282,7 @@ double CalcMassFlow(double dp, double p, double t,
     PrintError(ErrorCode::kDiametruInterior, 0);
     return 0;
   }
+
   if ((d_i > 800  && tip == TipDispozitiv::kVenturiBrut)
       || (d_i < 100 && tip == TipDispozitiv::kVenturiBrut)
       || (d_i > 250 && tip == TipDispozitiv::kVenturiPrelucrat)
@@ -260,6 +294,7 @@ double CalcMassFlow(double dp, double p, double t,
     PrintError(ErrorCode::kDiametruInterior, 0);
     return 0;
   }
+
   if ((IsDiaphragm(tip) && d_o < 12.5)
       || (tip == TipDispozitiv::kAjutajVenturi && d_o <= 50)) {
     PrintError(ErrorCode::kOrificuStrangulare, 0);
@@ -284,11 +319,11 @@ double CalcMassFlow(double dp, double p, double t,
     return 0;
   }
 
-  double eps, y;
+  double eps;
   if (IsDiaphragm(tip)) {
     eps = 1 - (0.41 + 0.35 * std::pow(beta, 4)) * dp / p / 1.31;
   } else {
-    y   = 1 - dp / p;
+    double y = 1 - dp / p;
     eps = std::sqrt(1.31 * std::pow(y, 1.52671) / 0.31
         * (1 - std::pow(beta, 4))
         / (1 - std::pow(beta, 4) * std::pow(y, 1.52671))
@@ -298,11 +333,14 @@ double CalcMassFlow(double dp, double p, double t,
   d_i /= 1000;
   d_o /= 1000;
 
-  double red = kInitialReynolds, qn = 0, q0 = 0, alfa = 0;
+  double red  = kInitialReynolds;
+  double qn   = 0;
+  double q0   = 0;
+  double alfa = 0;
   do {
     q0   = qn;
     alfa = VelocityCoefficient(tip, d_i, beta, red);
-    qn   = alfa * eps * kPi / 4 * std::pow(d_o, 2) * std::sqrt(2000 * dp * ro);
+    qn   = alfa * eps * kPi / 4 * std::pow(d_o, 2) * std::sqrt(k2kPaFactor * dp * ro);
     red  = 4 * qn / (d_i * kPi * eta);  // Re = 4*Qm / (pi*D*mu)
   } while (std::fabs(qn - q0) > kReynoldsTolerance);
 
@@ -347,6 +385,8 @@ double CalcMassFlow(double dp, double p, double t,
       if ((150000 <= red) && (red <= 2000000))
         reynolds_valid = true;
       break;
+    default:
+      break;
   }
 
   if (!reynolds_valid) {
@@ -361,10 +401,10 @@ double CalcMassFlow(double dp, double p, double t,
   return qn;
 }
 
-// Calculează densitatea amestecului ρ [kg/m³] la temperatura t [°C]
-// și presiunea p [atm] prin rezolvarea ecuației de stare BWR cu metoda bisecției.
-// Caută ρ în intervalul [kRoMin, kRoMax] [mol/L] până când
-// |p_BWR(ρ) − p| < kDensityTolerance [atm].
+// Funcție: CalcDensity
+// Intrări: t — temperatura [°C]; p — presiunea [atm]; bwr — constantele BWRS ale amestecului
+// Ieșire:  densitatea amestecului ρ [kg/m³]
+// Scop:    rezolvarea ecuației BWRS prin bisecție în [kRoMin, kRoMax] până la |p_calc − p| < kDensityTolerance
 double CalcDensity(double t, double p, const BwrConst& bwr) {
   double T   = t + kKelvinOffset;
   double R   = kGasConstantR;
@@ -375,9 +415,10 @@ double CalcDensity(double t, double p, const BwrConst& bwr) {
   do {
     ro   = (ro1 + ro2) / 2;
     pcal = R * T * ro
-         + (bwr.b0 * R * T - bwr.a0 - bwr.c0 / T / T) * ro * ro
-         + (bwr.b  * R * T - bwr.a) * std::pow(ro, 3)
-         + bwr.a * bwr.alpha * std::pow(ro, 6)
+         + (bwr.b0 * R * T - bwr.a0 - bwr.c0 / T / T
+            + bwr.d0 / (T * T * T) - bwr.e0 / (T * T * T * T)) * ro * ro
+         + (bwr.b  * R * T - bwr.a - bwr.dv / T) * std::pow(ro, 3)
+         + bwr.alpha * (bwr.a + bwr.dv / T) * std::pow(ro, 6)
          + (bwr.c / T / T) * std::pow(ro, 3)
          * (1 + bwr.gamma * ro * ro)
          * std::exp(-bwr.gamma * ro * ro);
