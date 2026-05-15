@@ -1,3 +1,4 @@
+#pragma codepage 65001
 ; =============================================================================
 ; BWR Gas Flow Calculator — Inno Setup Script
 ; ELCOST Impex  |  v2.0 / 2026

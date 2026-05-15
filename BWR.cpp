@@ -123,7 +123,7 @@ static void ReadDouble(double* val) {
   for (;;) {
     int ch = _getch();
     if (ch == 27) ExitApp();
-    if (ch == 0 || ch == 0xE0) { _getch(); continue; }
+    if (ch == 0 || ch == 0xE0) { (void)_getch(); continue; }
     if (ch == '\r') { std::printf("\n"); std::fflush(stdout); break; }
     if ((ch == 8 || ch == 127) && pos > 0) {
       pos--;
@@ -144,7 +144,7 @@ static void ReadInt(int* val) {
   for (;;) {
     int ch = _getch();
     if (ch == 27) ExitApp();
-    if (ch == 0 || ch == 0xE0) { _getch(); continue; }
+    if (ch == 0 || ch == 0xE0) { (void)_getch(); continue; }
     if (ch == '\r') { std::printf("\n"); std::fflush(stdout); break; }
     if ((ch == 8 || ch == 127) && pos > 0) {
       pos--;
@@ -179,7 +179,7 @@ static const char* const kCompNames[] = {
     "Metan", "Etan", "Propan", "Izobutan", "N-butan",
     "Neopentan", "Izopentan", "N-pentan", "2,2-dimetilbutan", "2,3-dimetilbutan",
     "3-metilpentan", "2-metilpentan", "N-hexan", "2,4-dimetilpentan", "2,2,3-trimetilbutan",
-    "2-metilhexan", "3-metilhexan", "3-etilpentan", "N-heptan", "2,2,3-trimetilpentan",
+    "2-metilhexan", "3-metilhexan", "3-etilpentan", "N-heptan", "2,2,4-trimetilpentan",
     "N-octan", "Benzen", "Toluen", "Hidrogen", "Monoxid de carbon",
     "Hidrogen sulfurat", "Heliu", "Argon", "Azot", "Oxigen",
     "Dioxid de carbon", "Aer", "Etilen\xC4\x83", "Propilen\xC4\x83", "Amoniac", "Acetilen\xC4\x83"
@@ -311,7 +311,7 @@ int main() {
       "\n"
       "  ╔════════════════════════════════════════════════════════╗\n"
       "  ║                                                        ║\n"
-      "  ║           E L C O S T   I m p e x                      ║\n"
+      "  ║               E L C O S T   I m p e x                  ║\n"
       "  ║                                                        ║\n"
       "  ╠════════════════════════════════════════════════════════╣\n"
       "  ║                                                        ║\n"
@@ -322,10 +322,10 @@ int main() {
       "  ║   ▸ Debit gaze         —  ISO 5167-2:2003              ║\n"
       "  ║   ▸ Coef. debit C      —  Reader-Harris / Gallagher    ║\n"
       "  ║   ▸ 36 componenți      —  9 dispozitive de strangulare ║\n"
-      "  ║   ▸ Ref. volumetrice   —  selectabile per \xC8\x9B" "ar\xC4\x83         \xe2\x95\x91\n"
+      "  ║   ▸ Ref. volumetrice   —  selectabile per țară         ║\n"
       "  ║                                                        ║\n"
       "  ╠════════════════════════════════════════════════════════╣\n"
-      "  ║   https://github.com/cagavriloaie/BenedictWebbRubin   ║\n"
+      "  ║                    office@elcost.ro                    ║\n"
       "  ╚════════════════════════════════════════════════════════╝\n"
       "\n");
   std::printf("%s", kReset);
@@ -495,8 +495,8 @@ int main() {
 
   // ── Buclă exterioară: selecția dispozitivului de măsurare ─────────────────
   for (;;) {
-    int   tip_raw;
-    double d_int, d_orif;
+    int    tip_raw = 0;
+    double d_int = 0.0, d_orif = 0.0;
 
     // Încearcă să refolosească configurația salvată
     {
