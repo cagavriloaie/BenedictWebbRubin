@@ -264,7 +264,7 @@ void PrintError(ErrorCode code, double red) {
 // Funcție: CalcMassFlow
 // Intrări: dp — Δp [kPa]; p — presiune absolută [kPa]; t — temperatură [°C];
 //          tip — tipul dispozitivului; d_int — D la 20 °C [mm]; d_orif — d la 20 °C [mm];
-//          ro — densitate (t,p) [kg/m³]; eta — viscozitate dinamică (t,p) [Pa·s]; out — structură ieșire hidraulică
+//          ro — densitate (t,p) [kg/m³]; eta — vâscozitate dinamică (t,p) [Pa·s]; out — structură ieșire hidraulică
 // Ieșire:  debitul masic Qm [kg/s]; câmpurile FlowResult prin *out; 0.0 la eroare
 // Scop:    validare domeniu ISO 5167, calcul Qm prin iterație pe Re
 double CalcMassFlow(double dp, double p, double t,

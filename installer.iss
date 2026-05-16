@@ -1,14 +1,14 @@
 #pragma codepage 65001
 ; =============================================================================
-; BWR Gas Flow Calculator — Inno Setup Script
+; BWR Gas Flow Calculator - Inno Setup Script
 ; ELCOST Impex  |  v2.0 / 2026
 ;
-; Pași înainte de compilare:
-;   1. Construiți configurația Release x64 din Visual Studio (sau CMake):
+; Pasi inainte de compilare:
+;   1. Construiti configuratia Release x64 din Visual Studio (sau CMake):
 ;        cmake --preset x64-release
 ;        cmake --build out\build\x64-release --config Release
-;   2. Deschideți acest fișier în Inno Setup Compiler și apăsați Build.
-;   3. Installerul apare în folderul  installer\  ca  BWR_Setup_v2.0.exe
+;   2. Deschideti acest fisier in Inno Setup Compiler si apasati Build.
+;   3. Installerul apare in folderul  installer\  ca  BWR_Setup_v2.0.exe
 ; =============================================================================
 
 #define AppName      "BWR Gas Flow Calculator"
@@ -39,17 +39,13 @@ MinVersion=10.0
 
 [Languages]
 Name: "romanian"; MessagesFile: "compiler:Languages\Romanian.isl"
-Name: "english";  MessagesFile: "compiler:Default.isl"
 
 [CustomMessages]
-romanian.RunAfterInstall=Pornește {#AppName}
-english.RunAfterInstall=Launch {#AppName}
-romanian.DesktopIconDesc=Creează pictogramă pe &Desktop
-english.DesktopIconDesc=Create a &Desktop icon
+RunAfterInstall=Porneste {#AppName}
 
 [Tasks]
 Name: "desktopicon"; \
-    Description: "{cm:DesktopIconDesc}"; \
+    Description: "Creaza pictograma pe &Desktop"; \
     GroupDescription: "{cm:AdditionalIcons}"; \
     Flags: unchecked
 

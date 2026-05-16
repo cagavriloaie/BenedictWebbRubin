@@ -6,11 +6,11 @@
 // =============================================================================
 //
 // DESCRIERE
-//   Aplicația calculează densitatea, viscozitatea dinamică și debitele unui
+//   Aplicația calculează densitatea, vâscozitatea dinamică și debitele unui
 //   amestec de gaze cu până la 35 de componente, pe baza:
 //     • ecuației de stare Benedict-Webb-Rubin-Starling (BWRS) pentru densitate;
 //     • modelului Chapman-Enskog corectat cu termenul de densitate ridicată
-//       pentru viscozitate;
+//       pentru vâscozitate;
 //     • metodei ISO 5167-2/3/4:2003 (ecuația Reader-Harris/Gallagher)
 //       pentru calculul debitului prin dispozitive de strangulare.
 //
@@ -34,7 +34,7 @@
 //
 // IEȘIRI (pentru fiecare set T / p / Δp)
 //   • Densitatea amestecului ρ(T, p)           [kg/m³]
-//   • Viscozitatea dinamică η(T, p)            [μPa·s]
+//   • Vâscozitatea dinamică η(T, p)            [μPa·s]
 //   • Debitul masic Qm                         [kg/s]
 //   • Debitul volumic la condiții de referință selectabile
 //       (0 °C / 101,325 kPa → Nm³/h; 15 °C / 101,325 kPa → Sm³/h; etc.)
@@ -294,7 +294,7 @@ static const char* const kCompNames[] = {
 // Ieșire:  —
 // Scop:    afișează tabelul compoziției aliniat în consolă, cu valori evidențiate în verde
 static void PrintComposition(const double* x) {
-  std::printf("\n%s  ── Compoziție ────────────────────────────────────────────────────────────────%s\n",
+  std::printf("\n%s  ── Compoziție%s\n",
               kBoldYellow, kReset);
   std::printf("%s  Fracții molare ale amestecului:%s\n\n", kBoldWhite, kReset);
   for (int i = 1; i <= kNumComponents; i++) {
@@ -478,7 +478,7 @@ int main() {
   std::printf(
       "  ──────────────────────────────────────────────────────────────────────────────\n"
       "  Ecuație de stare  BWRS · Starling 1973    │  35 componenți · 9 dispozitive\n"
-      "  Viscozitate       Chapman-Enskog          │  Debit  ISO 5167-2/3/4:2003\n"
+      "  Vâscozitate       Chapman-Enskog          │  Debit  ISO 5167-2/3/4:2003\n"
       "  Coef. C           Reader-Harris/Gallagher │  Ref. vol. selectabile per țară\n"
       "  ──────────────────────────────────────────────────────────────────────────────\n"
       "  office@elcost.ro\n"
@@ -513,7 +513,7 @@ int main() {
   if (!comp_loaded) {
     double sum = 0.0;
     do {
-      std::printf("\n%s  ── Compoziție ────────────────────────────────────────────────────────────────%s\n",
+      std::printf("\n%s  ── Compoziție %s\n",
                   kBoldYellow, kReset);
       std::printf("%s  Fracții molare ale amestecului de gaze:%s\n\n", kBoldWhite, kReset);
       for (int i = 1; i <= kNumComponents; i++) {
@@ -641,7 +641,7 @@ int main() {
   };
   static constexpr int kNRef = 5;
 
-  std::printf("\n%s  ── Condi\xC8\x9Bii de referin\xC8\x9B\xC4\x83 ────────────────────────────────────────────────────────%s\n\n",
+  std::printf("\n%s  ── Condi\xC8\x9Bii de referin\xC8\x9B\xC4\x83 %s\n",
               kBoldYellow, kReset);
   std::printf("%s  1.  Rom\xC3\xA2nia / UE  (DIN 1343)        \xe2\x80\x94   0\xC2\xB0""C \xC8\x99i 15\xC2\xB0""C / 101.325 kPa  [Nm\xC2\xB3/h] \xC8\x99i [Sm\xC2\xB3/h]%s\n", kBoldWhite, kReset);
   std::printf("%s  2.  ISO 13443  /  UK / Italia       \xe2\x80\x94  15\xC2\xB0""C / 101.325 kPa  [Sm\xC2\xB3/h]%s\n", kBoldWhite, kReset);
@@ -679,7 +679,7 @@ int main() {
       if (LoadConfig(&sv_tip, &sv_d_int, &sv_d_orif)
           && sv_tip >= kTipMin && sv_tip <= kTipMax) {
         std::printf(
-            "\n%s  ── Configurație salvată ──────────────────────────────────────────────────────%s\n"
+            "\n%s  ── Configurație salvată%s\n"
             "%s  Dispozitiv  : %s%s\n"
             "%s  D intern    : %s%g mm%s\n"
             "%s  D orificiu  : %s%g mm%s\n",
@@ -699,7 +699,7 @@ int main() {
 
     // Selectare manuală dispozitiv
     do {
-      std::printf("\n%s  ── Dispozitiv de strangulare ─────────────────────────────────────────────────%s\n",
+      std::printf("\n%s  ── Dispozitiv de strangulare%s\n",
                   kBoldYellow, kReset);
       std::printf("%s%s", kBoldWhite, kTipDisp);
       ReadInt(&tip_raw);
@@ -751,7 +751,7 @@ int main() {
     for (;;) {
       double temperatura, presiunea, presiunea_dif;
       do {
-        std::printf("\n\n%s  ── Condi\xC8\x9Bii de m\xC4\x83surare ───────────────────────────────────────────────────%s\n\n",
+        std::printf("\n\n%s  ── Condi\xC8\x9Bii de m\xC4\x83surare%s\n",
                     kBoldYellow, kReset);
         std::printf("  %s>%s %sTemperatura         [\xC2\xB0""C] : %s", kCyan, kReset, kBoldWhite, kReset);
         ReadDouble(&temperatura);
@@ -780,7 +780,7 @@ int main() {
                       kBoldRed, presiunea, kReset);
       } while (presiunea_dif <= 0.0 || presiunea_dif >= presiunea);
       std::printf("  %c", 7);
-      std::printf("\n%s  ── Rezultate ─────────────────────────────────────────────────────────────────%s\n",
+      std::printf("\n%s  ── Rezultate%s\n",
                   kBoldYellow, kReset);
 
       double ro = CalcDensity(temperatura, presiunea / kKpaPerAtm, bwr);
@@ -800,7 +800,7 @@ int main() {
       eta += kViscHighA / csi
            * std::pow(std::exp(kViscHighExp1 * roc_red) - std::exp(-kViscHighExp2 * roc_red),
                       kViscHighPow);
-      std::printf("%s  Viscozitatea dinamic\xC4\x83 (t,p)            :%s %s%10.4f%s [\xC2\xB5Pa\xC2\xB7s]\n",
+      std::printf("%s  V\xC3\xA2scozitatea dinamic\xC4\x83 (t,p)            :%s %s%10.4f%s [\xC2\xB5Pa\xC2\xB7s]\n",
                   kBoldWhite, kReset, kBoldGreen, eta * kPaToMicroPa, kReset);
 
       FlowResult flow;
@@ -823,10 +823,8 @@ int main() {
                   kBoldWhite, kReset, kBoldGreen, flow.pierderea, kReset);
       std::printf("%s  Raportul de str\xC3\xA2ngulare \xCE\xB2              :%s %s%10.4f%s [-]\n",
                   kBoldWhite, kReset, kBoldGreen, flow.beta, kReset);
-      std::printf("%s  Num\xC4\x83rul Reynolds                       :%s %s%10.4g%s [-]\n",
+      std::printf("%s  Num\xC4\x83rul Reynolds                       :%s %s%10.4g%s [-]\n\n\n",
                   kBoldWhite, kReset, kBoldGreen, flow.reynolds, kReset);
-      std::printf("%s  ──────────────────────────────────────────────────────────────────────────────%s\n",
-                  kBoldYellow, kReset);
     }
   }
 }
