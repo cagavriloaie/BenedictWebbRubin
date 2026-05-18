@@ -3,9 +3,11 @@
 
 #pragma once
 
+#include <chrono>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <iostream>
 
 namespace {
@@ -70,13 +72,18 @@ constexpr double kViscHighExp2 = 1.111;    // negative-exponential argument coef
 constexpr double kViscHighPow  = 1.358;    // outer power
 
 // ANSI color codes
-constexpr const char* kReset      = "\033[0m";
-constexpr const char* kBoldYellow = "\033[1;33m";
-constexpr const char* kBoldWhite  = "\033[1;37m";
-constexpr const char* kBoldGreen  = "\033[1;32m";
-constexpr const char* kBoldRed    = "\033[1;31m";
+constexpr const char* kReset      = "\033[0;37m";
+constexpr const char* kBoldYellow = "\033[33m";
+constexpr const char* kBoldWhite  = "\033[37m";
+constexpr const char* kBoldGreen  = "\033[32m";
+constexpr const char* kBoldRed    = "\033[31m";
 constexpr const char* kYellow     = "\033[33m";
-constexpr const char* kCyan       = "\033[1;36m";
+constexpr const char* kCyan       = "\033[36m";
+
+// Bold — exclusiv pentru blocul antet
+constexpr const char* kHdrYellow  = "\033[1;33m";
+constexpr const char* kHdrGreen   = "\033[1;32m";
+constexpr const char* kHdrCyan    = "\033[1;36m";
 
 constexpr int kTipMin =
     static_cast<int>(TipDispozitiv::kDiafragmaUnghi);
@@ -136,10 +143,14 @@ struct BwrConst {
 
 // Rezultatele hidraulice returnate de CalcMassFlow()
 struct FlowResult {
-  double viteza    = 0.0;  // viteza medie a gazului în conductă [m/s]
-  double pierderea = 0.0;  // pierderea de presiune prin strangulare [kPa]
-  double beta      = 0.0;  // raportul de strangulare d/D la temperatura de măsurare [-]
-  double reynolds  = 0.0;  // numărul Reynolds după iterație [-]
+  double viteza      = 0.0;  // viteza medie a gazului în conductă [m/s]
+  double pierderea   = 0.0;  // pierderea de presiune prin strangulare [kPa]
+  double beta        = 0.0;  // raportul de strangulare d/D la temperatura de măsurare [-]
+  double reynolds    = 0.0;  // numărul Reynolds după iterație [-]
+  double coef_c      = 0.0;  // coeficientul de debit C [-]
+  double epsilon     = 0.0;  // factorul de expansibilitate ε [-]
+  double d_lucru_mm  = 0.0;  // diametrul orificiului la temperatura de lucru [mm]
+  double D_lucru_mm  = 0.0;  // diametrul conductei la temperatura de lucru [mm]
 };
 
 // Condiții de referință volumetrică (un preset = 1 sau 2 perechi T/101.325 kPa)
@@ -269,7 +280,7 @@ void PrintError(ErrorCode code, double red) {
 // Scop:    validare domeniu ISO 5167, calcul Qm prin iterație pe Re
 double CalcMassFlow(double dp, double p, double t,
             TipDispozitiv tip, double d_int, double d_orif,
-            double ro, double eta, FlowResult* out) {
+            double ro, double eta, FlowResult* out, int* iters = nullptr) {
   double d_i = d_int  * (1 + kThermalExpPipe    * (t - kRefTempCelsius));
   double d_o = d_orif * (1 + kThermalExpOrifice * (t - kRefTempCelsius));
 
@@ -337,12 +348,15 @@ double CalcMassFlow(double dp, double p, double t,
   double qn   = 0;
   double q0   = 0;
   double alfa = 0;
+  int nre = 0;
   do {
+    nre++;
     q0   = qn;
     alfa = VelocityCoefficient(tip, d_i, beta, red);
     qn   = alfa * eps * kPi / 4 * std::pow(d_o, 2) * std::sqrt(k2kPaFactor * dp * ro);
     red  = 4 * qn / (d_i * kPi * eta);  // Re = 4*Qm / (pi*D*mu)
   } while (std::fabs(qn - q0) > kReynoldsTolerance);
+  if (iters) *iters = nre;
 
   bool reynolds_valid = false;
   switch (tip) {
@@ -394,10 +408,14 @@ double CalcMassFlow(double dp, double p, double t,
     return 0;
   }
 
-  out->viteza    = 4 * qn / kPi / d_i / d_i / ro;
-  out->pierderea = (1 - alfa * beta * beta) / (1 + alfa * beta * beta) * dp;
-  out->beta      = beta;
-  out->reynolds  = red;
+  out->viteza      = 4 * qn / kPi / d_i / d_i / ro;
+  out->pierderea   = (1 - alfa * beta * beta) / (1 + alfa * beta * beta) * dp;
+  out->beta        = beta;
+  out->reynolds    = red;
+  out->coef_c      = DischargeCoefficient(tip, d_i, beta, red);
+  out->epsilon     = eps;
+  out->d_lucru_mm  = d_o * 1000.0;
+  out->D_lucru_mm  = d_i * 1000.0;
   return qn;
 }
 
@@ -405,14 +423,16 @@ double CalcMassFlow(double dp, double p, double t,
 // Intrări: t — temperatura [°C]; p — presiunea [atm]; bwr — constantele BWRS ale amestecului
 // Ieșire:  densitatea amestecului ρ [kg/m³]
 // Scop:    rezolvarea ecuației BWRS prin bisecție în [kRoMin, kRoMax] până la |p_calc − p| < kDensityTolerance
-double CalcDensity(double t, double p, const BwrConst& bwr) {
+double CalcDensity(double t, double p, const BwrConst& bwr, int* iters = nullptr) {
   double T   = t + kKelvinOffset;
   double R   = kGasConstantR;
   double ro1 = kRoMin;
   double ro2 = kRoMax;
   double ro  = 0.0;
   double pcal = 0.0;
+  int n = 0;
   do {
+    n++;
     ro   = (ro1 + ro2) / 2;
     pcal = R * T * ro
          + (bwr.b0 * R * T - bwr.a0 - bwr.c0 / T / T
@@ -425,6 +445,7 @@ double CalcDensity(double t, double p, const BwrConst& bwr) {
     if (pcal > p) ro2 = ro;
     else          ro1 = ro;
   } while (std::fabs(p - pcal) >= kDensityTolerance);
+  if (iters) *iters = n;
   return bwr.molar_mass * ro;
 }
 
