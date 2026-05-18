@@ -32,21 +32,24 @@ enum class ErrorCode {
   kOrificuStrangulare = 2,
   kRaportStrangulare  = 3,
   kReynolds           = 4,
+  kNumeric            = 5,
 };
 
 constexpr int kNumComponents = 35;
 constexpr int kArraySize     = kNumComponents + 1;
 
 constexpr double kKelvinOffset      = 273.15;
-constexpr double kGasConstantR      = 0.082055;
+constexpr double kGasConstantR      = 0.082057366;  // CODATA 2018
 constexpr double kRefTempCelsius    = 20.0;
 constexpr double kKpaPerAtm         = 101.325;
 constexpr double kReynoldsIsoRef    = 1.0e6;  // ISO 5167 Re normalization
 constexpr double kInitialReynolds   = 1.0e6;  // starting guess for Re iteration
-constexpr double kReynoldsTolerance = 1.0e-4;
+constexpr double kReynoldsTolerance = 1.0e-6;  // relative convergence |ΔQm/Qm|
 constexpr double kDensityTolerance  = 5.0e-4;
 constexpr double kRoMin             = 1.0e-4;
 constexpr double kRoMax             = 5.0;
+constexpr int    kMaxReynoldsIter   = 100;
+constexpr int    kMaxDensityIter    = 200;
 constexpr double kSumTolerance      = 1.0e-3;  // tolerance for Σx = 1 check
 
 // Thermal expansion coefficients (linear, per °C, at 20 °C reference)
@@ -58,6 +61,9 @@ constexpr double kFlangeTapM = 0.0254;
 
 // Factor in Qm formula: 2 × (Pa/kPa) so Δp[kPa]·ρ enters as SI
 constexpr double k2kPaFactor = 2000.0;
+
+// Isentropic exponent (default air/typical gas mixture; ISO 5167 ε formula)
+constexpr double kKappa = 1.31;
 
 // BWRS quadratic mixing-rule coefficient (Starling 1973)
 constexpr double kBwrsMixCoef = 8.0;
@@ -73,7 +79,7 @@ constexpr double kViscHighPow  = 1.358;    // outer power
 
 // ANSI color codes
 constexpr const char* kReset      = "\033[0;37m";
-constexpr const char* kBoldYellow = "\033[33m";
+constexpr const char* kBoldYellow = "\033[1;33m";
 constexpr const char* kBoldWhite  = "\033[37m";
 constexpr const char* kBoldGreen  = "\033[32m";
 constexpr const char* kBoldRed    = "\033[31m";
@@ -151,6 +157,7 @@ struct FlowResult {
   double epsilon     = 0.0;  // factorul de expansibilitate ε [-]
   double d_lucru_mm  = 0.0;  // diametrul orificiului la temperatura de lucru [mm]
   double D_lucru_mm  = 0.0;  // diametrul conductei la temperatura de lucru [mm]
+  double kappa       = 1.31; // exponentul izentropic κ utilizat pentru ε [-]
 };
 
 // Condiții de referință volumetrică (un preset = 1 sau 2 perechi T/101.325 kPa)
@@ -188,7 +195,7 @@ double DischargeCoefficient(TipDispozitiv tip, double d_m, double beta, double r
       } else if (tip == TipDispozitiv::kDiafragmaFlansa) {
         L1 = kFlangeTapM / d_m;  L2p = L1;   // prize la flanșă: 25,4 mm / D
       } else {
-        L1 = 1.0;    L2p = 0.47;           // prize la D și D/2
+        L1 = 1.0;    L2p = 0.50;           // prize la D și D/2 (ISO 5167-2)
       }
       double A  = std::pow(19000.0 * beta / re, 0.8);
       double M2 = 2.0 * L2p / (1.0 - beta);
@@ -280,7 +287,15 @@ void PrintError(ErrorCode code, double red) {
 // Scop:    validare domeniu ISO 5167, calcul Qm prin iterație pe Re
 double CalcMassFlow(double dp, double p, double t,
             TipDispozitiv tip, double d_int, double d_orif,
-            double ro, double eta, FlowResult* out, int* iters = nullptr) {
+            double ro, double eta, FlowResult* out, double kappa = kKappa, int* iters = nullptr) {
+  if (!out || !std::isfinite(dp) || !std::isfinite(p) || !std::isfinite(t)
+      || !std::isfinite(d_int) || !std::isfinite(d_orif)
+      || !std::isfinite(ro) || !std::isfinite(eta)
+      || dp <= 0.0 || p <= 0.0 || dp >= p || ro <= 0.0 || eta <= 0.0) {
+    PrintError(ErrorCode::kNumeric, 0);
+    return 0;
+  }
+
   double d_i = d_int  * (1 + kThermalExpPipe    * (t - kRefTempCelsius));
   double d_o = d_orif * (1 + kThermalExpOrifice * (t - kRefTempCelsius));
 
@@ -332,13 +347,20 @@ double CalcMassFlow(double dp, double p, double t,
 
   double eps;
   if (IsDiaphragm(tip)) {
-    eps = 1 - (0.41 + 0.35 * std::pow(beta, 4)) * dp / p / 1.31;
+    eps = 1 - (0.41 + 0.35 * std::pow(beta, 4)) * dp / p / kappa;
   } else {
-    double y = 1 - dp / p;
-    eps = std::sqrt(1.31 * std::pow(y, 1.52671) / 0.31
-        * (1 - std::pow(beta, 4))
-        / (1 - std::pow(beta, 4) * std::pow(y, 1.52671))
-        * (1 - std::pow(y, 0.236641)) / (1 - y));
+    double y     = 1 - dp / p;
+    double exp2k = 2.0 / kappa;              // exponent y^(2/κ)
+    double expk1 = (kappa - 1.0) / kappa;   // exponent y^((κ-1)/κ)
+    double b4    = std::pow(beta, 4);
+    double yk    = std::pow(y, exp2k);
+    eps = std::sqrt(kappa * yk / (kappa - 1.0)
+        * (1.0 - b4) / (1.0 - b4 * yk)
+        * (1.0 - std::pow(y, expk1)) / (1.0 - y));
+  }
+  if (!std::isfinite(eps) || eps <= 0.0) {
+    PrintError(ErrorCode::kNumeric, 0);
+    return 0;
   }
 
   d_i /= 1000;
@@ -349,14 +371,27 @@ double CalcMassFlow(double dp, double p, double t,
   double q0   = 0;
   double alfa = 0;
   int nre = 0;
-  do {
+  bool converged = false;
+  for (; nre < kMaxReynoldsIter; ) {
     nre++;
     q0   = qn;
     alfa = VelocityCoefficient(tip, d_i, beta, red);
     qn   = alfa * eps * kPi / 4 * std::pow(d_o, 2) * std::sqrt(k2kPaFactor * dp * ro);
     red  = 4 * qn / (d_i * kPi * eta);  // Re = 4*Qm / (pi*D*mu)
-  } while (std::fabs(qn - q0) > kReynoldsTolerance);
+    if (!std::isfinite(alfa) || !std::isfinite(qn) || !std::isfinite(red)) {
+      PrintError(ErrorCode::kNumeric, 0);
+      return 0;
+    }
+    if (std::fabs((qn - q0) / std::max(qn, 1e-10)) <= kReynoldsTolerance) {
+      converged = true;
+      break;
+    }
+  }
   if (iters) *iters = nre;
+  if (!converged) {
+    PrintError(ErrorCode::kNumeric, 0);
+    return 0;
+  }
 
   bool reynolds_valid = false;
   switch (tip) {
@@ -409,32 +444,48 @@ double CalcMassFlow(double dp, double p, double t,
   }
 
   out->viteza      = 4 * qn / kPi / d_i / d_i / ro;
-  out->pierderea   = (1 - alfa * beta * beta) / (1 + alfa * beta * beta) * dp;
+  // Exact ISO Annex A for diaphragms/nozzles; empirical fraction for classical Venturi
+  // (Venturi recovers 80-95% of Δp; orifice formula would give ~60% — far too high)
+  double loss_frac;
+  if (tip == TipDispozitiv::kVenturiBrut) {
+    loss_frac = 0.15;
+  } else if (tip == TipDispozitiv::kVenturiPrelucrat) {
+    loss_frac = 0.08;
+  } else if (tip == TipDispozitiv::kVenturiTabla) {
+    loss_frac = 0.15;
+  } else {
+    double C  = out->coef_c;
+    double b2 = beta * beta;
+    double sq = std::sqrt(1.0 - b2 * b2 * (1.0 - C * C));
+    loss_frac = (sq - C * b2) / (sq + C * b2);
+  }
+  out->pierderea   = loss_frac * dp;
   out->beta        = beta;
   out->reynolds    = red;
   out->coef_c      = DischargeCoefficient(tip, d_i, beta, red);
   out->epsilon     = eps;
   out->d_lucru_mm  = d_o * 1000.0;
   out->D_lucru_mm  = d_i * 1000.0;
+  out->kappa       = kappa;
   return qn;
 }
 
 // Funcție: CalcDensity
 // Intrări: t — temperatura [°C]; p — presiunea [atm]; bwr — constantele BWRS ale amestecului
 // Ieșire:  densitatea amestecului ρ [kg/m³]
-// Scop:    rezolvarea ecuației BWRS prin bisecție în [kRoMin, kRoMax] până la |p_calc − p| < kDensityTolerance
+// Scop:    rezolvarea ecuației BWRS prin bisecție pe ramura gazoasă (monoton crescătoare)
+//          până la |p_calc − p| < kDensityTolerance. Căutare adaptivă a marginii superioare
+//          pentru a evita bucla van der Waals (gazele sub Tc, ex. H2S, CO2, NH3).
 double CalcDensity(double t, double p, const BwrConst& bwr, int* iters = nullptr) {
   double T   = t + kKelvinOffset;
   double R   = kGasConstantR;
-  double ro1 = kRoMin;
-  double ro2 = kRoMax;
-  double ro  = 0.0;
-  double pcal = 0.0;
-  int n = 0;
-  do {
-    n++;
-    ro   = (ro1 + ro2) / 2;
-    pcal = R * T * ro
+  if (!std::isfinite(T) || !std::isfinite(p) || !std::isfinite(bwr.molar_mass)
+      || T <= 0.0 || p <= 0.0 || bwr.molar_mass <= 0.0) {
+    if (iters) *iters = 0;
+    return 0.0;
+  }
+  auto pressure_at = [&](double ro) {
+    return R * T * ro
          + (bwr.b0 * R * T - bwr.a0 - bwr.c0 / T / T
             + bwr.d0 / (T * T * T) - bwr.e0 / (T * T * T * T)) * ro * ro
          + (bwr.b  * R * T - bwr.a - bwr.dv / T) * std::pow(ro, 3)
@@ -442,11 +493,49 @@ double CalcDensity(double t, double p, const BwrConst& bwr, int* iters = nullptr
          + (bwr.c / T / T) * std::pow(ro, 3)
          * (1 + bwr.gamma * ro * ro)
          * std::exp(-bwr.gamma * ro * ro);
+  };
+
+  // Adaptive bracket: start from ideal-gas estimate and double ro2 until
+  // p(ro2) >= p_target, stopping if pressure starts decreasing (van der Waals
+  // spinodal) to stay on the gas-phase branch.
+  double ro1 = kRoMin;
+  double p1  = pressure_at(ro1);
+  double ro2 = std::max(p / (R * T), ro1 * 2.0);  // ideal-gas starting point
+  double p2  = pressure_at(ro2);
+  double p_lo = p1;
+  for (int k = 0; k < 60; k++) {
+    if (!std::isfinite(p2) || p2 < p_lo) break;  // spinodal or non-finite
+    if (p2 >= p) break;                           // upper bracket found
+    p_lo = p2;
+    ro1  = ro2;  p1 = p2;
+    ro2  = std::min(ro2 * 2.0, kRoMax);
+    p2   = pressure_at(ro2);
+  }
+
+  if (!std::isfinite(p1) || !std::isfinite(p2) || p < p1 || p > p2) {
+    if (iters) *iters = 0;
+    return 0.0;
+  }
+  double ro   = 0.0;
+  double pcal = 0.0;
+  int n = 0;
+  for (; n < kMaxDensityIter; ) {
+    n++;
+    ro   = (ro1 + ro2) / 2;
+    pcal = pressure_at(ro);
+    if (!std::isfinite(pcal)) {
+      if (iters) *iters = n;
+      return 0.0;
+    }
+    if (std::fabs(p - pcal) < kDensityTolerance) {
+      if (iters) *iters = n;
+      return bwr.molar_mass * ro;
+    }
     if (pcal > p) ro2 = ro;
     else          ro1 = ro;
-  } while (std::fabs(p - pcal) >= kDensityTolerance);
+  }
   if (iters) *iters = n;
-  return bwr.molar_mass * ro;
+  return 0.0;
 }
 
 }  // namespace

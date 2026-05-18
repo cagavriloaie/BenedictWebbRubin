@@ -21,7 +21,7 @@
 | Simbol | Valoare | Unitate | Descriere |
 |--------|---------|---------|-----------|
 | π | 3.141592653589 | — | Constanta matematică pi |
-| R | 0.082055 | L·atm/(mol·K) | Constanta universală a gazelor |
+| R | 0.082057366 | L·atm/(mol·K) | Constanta universală a gazelor (CODATA 2018) |
 | T₀ | 273.15 | K | Offset conversie °C → K |
 | T_ref | 20.0 | °C | Temperatura de referință |
 | k_kPa/atm | 101.325 | kPa/atm | Conversie presiune |
@@ -87,10 +87,10 @@ E₀_mix = Σᵢ Σⱼ xᵢ·xⱼ · √(E₀ᵢ·E₀ⱼ) · (1 − kᵢⱼ)⁵
 ### 3.2 Regulă cubică (parametrii a, b, c, d, α)
 
 ```
-a_mix = Σᵢ Σⱼ Σₗ xᵢ·xⱼ·xₗ · ∛( aᵢ·aⱼ·aₗ · (1−kᵢⱼ)·(1−kᵢₗ)·(1−kⱼₗ) )
+a_mix = Σᵢ Σⱼ Σₗ xᵢ·xⱼ·xₗ · ∛( aᵢ·aⱼ·aₗ ) · (1−kᵢⱼ)·(1−kᵢₗ)·(1−kⱼₗ)
 b_mix = Σᵢ Σⱼ Σₗ xᵢ·xⱼ·xₗ · ∛( bᵢ·bⱼ·bₗ )
 c_mix = Σᵢ Σⱼ Σₗ xᵢ·xⱼ·xₗ · ∛( cᵢ·cⱼ·cₗ ) · (1−kᵢⱼ)·(1−kᵢₗ)·(1−kⱼₗ)
-d_mix = Σᵢ Σⱼ Σₗ xᵢ·xⱼ·xₗ · ∛( dᵢ·dⱼ·dₗ · (1−kᵢⱼ)·(1−kᵢₗ)·(1−kⱼₗ) )
+d_mix = Σᵢ Σⱼ Σₗ xᵢ·xⱼ·xₗ · ∛( dᵢ·dⱼ·dₗ ) · (1−kᵢⱼ)·(1−kᵢₗ)·(1−kⱼₗ)
 α_mix = Σᵢ Σⱼ Σₗ xᵢ·xⱼ·xₗ · ∛( αᵢ·αⱼ·αₗ )
 ```
 
@@ -141,7 +141,7 @@ unde M_mix = Σᵢ (xᵢ · mᵢ)   [masa molară a amestecului, g/mol]
 
 unde:
   ρ_red = ρ / ρ_crit            (densitate redusă)
-  ξ     = Tc^(1/6) / (√M · Pc^(2/3))
+  ξ     = Tc^6 / (√M · Pc^(2/3))     (formulare calibrată — nu forma standard Tc^(1/6))
   ρ_crit = Pc / (R · Zc · Tc)   [mol/L]
 ```
 
@@ -184,7 +184,7 @@ La iterația k:
   Qmₖ = αₖ · ε · (π/4) · d² · √(2000·Δp·ρ)
   Re_{k+1} = 4·Qmₖ / (π·D·η)
 
-Convergență: |Qmₖ − Qm_{k-1}| < 10⁻⁴ kg/s
+Convergență: |Qmₖ − Qm_{k-1}| / max(Qmₖ, 10⁻¹⁰) < 10⁻⁶  (toleranță relativă)
 ```
 
 ### 6.4 Viteza medie în conductă
@@ -195,8 +195,16 @@ v = 4·Qm / (π·D²·ρ)   [m/s]
 
 ### 6.5 Căderea de presiune la dispozitivul de laminare
 
+Diafragme și ajutaje (ISO 5167-2/3 Anexa A):
 ```
-Δp_laminare = (1 − α·β²) / (1 + α·β²) · Δp
+  Δp_laminare = (√(1−β⁴(1−C²)) − C·β²) / (√(1−β⁴(1−C²)) + C·β²) · Δp
+```
+
+Tuburi Venturi clasice (fracție empirică din Δp):
+```
+  brut turnat: ~15%  ·  Δp
+  prelucrat:   ~ 8%  ·  Δp
+  tablă sudată: ~15% ·  Δp
 ```
 
 ### 6.6 Debit volumic
@@ -233,7 +241,7 @@ unde:
 |-----------|----|-----|
 | Unghi (corner taps) | 0 | 0 |
 | Flanșă (flange taps) | 0.0254/D | 0.0254/D |
-| D și D/2 | 1.0 | 0.47 |
+| D și D/2 | 1.0 | 0.50 |
 
 ### 7.2 Ajutaje (nozzles) – ISO 5167-3
 
@@ -266,7 +274,8 @@ C = 0.9965 − 0.00653·√β·√(10⁶/Re)
 ```
 ε = 1 − (0.41 + 0.35·β⁴) · Δp / (κ·p)
 
-unde κ = 1.31 (exponentul izentrop implicit)
+unde κ = Cp_mix / (Cp_mix − R_SI)   cu  R_SI = 8.314 J/(mol·K)
+         Cp_mix = Σᵢ xᵢ · Cp°ᵢ      (capacitate calorică ideală la 20 °C)
 ```
 
 ### 8.2 Ajutaje și tuburi Venturi (ISO 5167-3/4)

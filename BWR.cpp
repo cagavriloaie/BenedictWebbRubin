@@ -58,7 +58,7 @@
 //   prin reguli de mixare pătratice (A₀–E₀, γ) și cubice (a–d, α).
 //
 // ALGORITM DEBIT
-//   Iterație pe numărul Reynolds până la convergența |Qm_k − Qm_{k-1}| < 10⁻⁴.
+//   Iterație pe numărul Reynolds până la convergența relativă |ΔQm/Qm| < 10⁻⁶.
 //   Coeficientul de debit C și factorul de expansibilitate ε sunt recalculați
 //   la fiecare iterație în funcție de Re și β.
 //
@@ -94,6 +94,7 @@ static constexpr double kAlfaTableScale = 1.0e3;    // alfa stored ×1000
 static constexpr double kGamaTableScale = 100.0;    // gama stored ×100
 static constexpr double kVTableScale    = 1.0e3;    // V stored ×1000
 static constexpr double kEtTableScale   = 1.0e4;    // et stored ×10000
+static constexpr double kGasConstantRSI = 8.31446;  // R [J/(mol·K)] for κ = Cp/(Cp−R)
 
 // Funcție: LoadComposition
 // Intrări: x — tablou de ieșire pentru fracțiile molare (indexat 1..kNumComponents)
@@ -197,49 +198,13 @@ static void ReadDouble(double* val) {
       std::fflush(stdout);
       continue;
     }
-    if (pos < (int)sizeof(buf) - 2 && (ch >= '0' && ch <= '9' || ch == '.' || (ch == '-' && pos == 0))) {
+    if (pos < (int)sizeof(buf) - 2 && ((ch >= '0' && ch <= '9') || ch == '.' || (ch == '-' && pos == 0))) {
       buf[pos++] = static_cast<char>(ch);
       std::printf("%c", ch);
       std::fflush(stdout);
     }
   }
   *val = (pos > 0) ? std::atof(buf) : 0.0;
-}
-
-// Funcție: ReadInt
-// Intrări: val — pointer la variabila de ieșire
-// Ieșire:  valoarea citită prin *val (0 dacă nu s-a introdus nimic)
-// Scop:    citire interactivă a unui întreg pozitiv cu ecou, backspace și ESC
-static void ReadInt(int* val) {
-  char buf[32] = {};
-  int pos = 0;
-  for (;;) {
-    int ch = _getch();
-    if (ch == 27) {
-      ExitApp();
-    }
-    if (ch == 0 || ch == 0xE0) {
-      (void)_getch();
-      continue;
-    }
-    if (ch == '\r') {
-      std::printf("\n");
-      std::fflush(stdout);
-      break;
-    }
-    if ((ch == 8 || ch == 127) && pos > 0) {
-      pos--;
-      std::printf("\b \b");
-      std::fflush(stdout);
-      continue;
-    }
-    if (pos < (int)sizeof(buf) - 2 && ch >= '0' && ch <= '9') {
-      buf[pos++] = static_cast<char>(ch);
-      std::printf("%c", ch);
-      std::fflush(stdout);
-    }
-  }
-  *val = (pos > 0) ? std::atoi(buf) : 0;
 }
 
 // Scop: citește un singur caracter cifră în intervalul [lo, hi] fără a necesita ENTER
@@ -393,7 +358,7 @@ int main() {
         0,        0.33,      0.243389,  0.607175,  1.07408,   1.10132,   1.7,      1.7,      1.81,    2.189,
         3.5948,   2.25,      2.25,      2.81086,   2.764,     2.764,     2.8155,   2.8155,   2.8155,  4.35611,
         2.207,    2.581,     0.7001,    0.318,     0.0072673, 0.135,     0.071955, 0.0072673, 0.035589, 0.1272,
-      927.06,     0.0698611, 0.73924,   0.178,    0.0046521779, 0.27363248};
+        0.09270,    0.0698611, 0.73924,   0.178,    0.0046521779, 0.27363248};  // [30]=O₂ corrected from 927.06 (Starling 1973)
 
   static double gama[kArraySize] = {  // (*) /= 100
        0,         1.05,      1.18,      2.2,       3.4,       3.4,       4.63,     4.63,     4.75,    5.65,
@@ -475,29 +440,37 @@ int main() {
        2.027e-1,     1.00e-4,  1.100e-2, 1.601e-2, 2.100e-2,
        3.849e-1,     1.000e-1, 9.500e-1, 6.000e-1, 2.000e-1}; // *33,*34,*35
 
+  // Cp° ideal-gas [J/(mol·K)] at 20 °C — pentru κ = Cp/(Cp − R) cu R = 8.314 J/(mol·K)
+  // Surse: NIST WebBook; izomerii C5–C8 estimați din grupuri funcționale (±2 J/(mol·K))
+  static const double kCp0[kArraySize] = {
+       0,      35.7,  52.5,  73.6,  97.5,  96.4, 120.9, 118.9, 120.1, 141.3,
+     140.9,  141.7, 141.2, 143.1, 164.8, 163.4, 165.0, 165.0, 165.1, 166.1,
+     188.9,  188.9,  82.4, 103.7,  28.8,  29.1,  34.2,  20.8,  20.8,  29.1,
+      29.4,   37.1,  42.9,  63.9,  35.7,  44.0};
+
   // Scalare tablouri (*) — executată o singură dată la pornire
-  for (int i = 0; i <= kNumComponents; i++) {
+  for (int i = 1; i <= kNumComponents; i++) {
     B[i] /= kBTableScale;
   }
-  for (int i = 0; i <= kNumComponents; i++) {
+  for (int i = 1; i <= kNumComponents; i++) {
     C[i] *= kCTableScale;
   }
-  for (int i = 0; i <= kNumComponents; i++) {
+  for (int i = 1; i <= kNumComponents; i++) {
     b[i] /= kBTableScale;
   }
-  for (int i = 0; i <= kNumComponents; i++) {
+  for (int i = 1; i <= kNumComponents; i++) {
     c[i] *= kCTableScale;
   }
-  for (int i = 0; i <= kNumComponents; i++) {
+  for (int i = 1; i <= kNumComponents; i++) {
     alfa[i] /= kAlfaTableScale;
   }
-  for (int i = 0; i <= kNumComponents; i++) {
+  for (int i = 1; i <= kNumComponents; i++) {
     gama[i] /= kGamaTableScale;
   }
-  for (int i = 0; i <= kNumComponents; i++) {
+  for (int i = 1; i <= kNumComponents; i++) {
     V[i] /= kVTableScale;
   }
-  for (int i = 0; i <= kNumComponents; i++) {
+  for (int i = 1; i <= kNumComponents; i++) {
     et[i] /= kEtTableScale;
   }
 
@@ -592,7 +565,7 @@ int main() {
         BwrConst bt;
         for (int i = 1; i <= kNumComponents; i++) {
           for (int j = 1; j <= kNumComponents; j++) {
-            if (xc[i] == 0.0 || xc[j] == 0.0) continue;
+            if (xc[i] <= 0.0 || xc[j] <= 0.0) continue;
             double kk = 1 - kBwrsMixCoef * std::sqrt(V[i] * V[j])
                      / std::pow(std::cbrt(V[i]) + std::cbrt(V[j]), 3);
             bt.a0    += xc[i] * xc[j] * std::sqrt(A[i] * A[j]) * (1 - kk);
@@ -606,7 +579,7 @@ int main() {
         for (int i = 1; i <= kNumComponents; i++) {
           for (int j = 1; j <= kNumComponents; j++) {
             for (int l = 1; l <= kNumComponents; l++) {
-              if (xc[i] == 0.0 || xc[j] == 0.0 || xc[l] == 0.0) continue;
+              if (xc[i] <= 0.0 || xc[j] <= 0.0 || xc[l] <= 0.0) continue;
               double k1 = 1 - kBwrsMixCoef * std::sqrt(V[i] * V[j])
                        / std::pow(std::cbrt(V[i]) + std::cbrt(V[j]), 3);
               double k2 = 1 - kBwrsMixCoef * std::sqrt(V[i] * V[l])
@@ -614,12 +587,12 @@ int main() {
               double k3 = 1 - kBwrsMixCoef * std::sqrt(V[j] * V[l])
                        / std::pow(std::cbrt(V[j]) + std::cbrt(V[l]), 3);
               bt.a     += xc[i] * xc[j] * xc[l]
-                        * std::cbrt(a[i]*a[j]*a[l] * (1-k1)*(1-k2)*(1-k3));
+                        * std::cbrt(a[i]*a[j]*a[l]) * (1-k1)*(1-k2)*(1-k3);
               bt.b     += xc[i] * xc[j] * xc[l] * std::cbrt(b[i]*b[j]*b[l]);
               bt.c     += xc[i] * xc[j] * xc[l]
                         * std::cbrt(c[i]*c[j]*c[l]) * (1-k1)*(1-k2)*(1-k3);
               bt.dv    += xc[i] * xc[j] * xc[l]
-                        * std::cbrt(dv[i]*dv[j]*dv[l] * (1-k1)*(1-k2)*(1-k3));
+                        * std::cbrt(dv[i]*dv[j]*dv[l]) * (1-k1)*(1-k2)*(1-k3);
               bt.alpha += xc[i] * xc[j] * xc[l]
                         * std::cbrt(alfa[i]*alfa[j]*alfa[l]);
             }
@@ -1244,7 +1217,7 @@ int main() {
 
       if (std::fabs(sum - 1.0) > kSumTolerance) {
         std::printf("%s\n  Suma fracțiilor molare = %.6f  ≠  1.%s\n", kBoldRed, sum, kReset);
-        if (sum < kSumTolerance) {
+        if (sum < 1e-10) {
           std::printf("%s  Suma este zero — reintroduceți compoziția.%s\n", kBoldRed, kReset);
         } else {
           std::printf("%s  Normalizați automat? [d/n] (n = reintroduceți) %s>%s ", kYellow, kCyan, kReset);
@@ -1285,6 +1258,7 @@ int main() {
 
   for (int i = 1; i <= kNumComponents; i++) {
     for (int j = 1; j <= kNumComponents; j++) {
+      if (x[i] <= 0.0 || x[j] <= 0.0) continue;
       double kk = 1 - kBwrsMixCoef * std::sqrt(V[i] * V[j])
                / std::pow(std::cbrt(V[i]) + std::cbrt(V[j]), 3);
       bwr.a0    += x[i] * x[j] * std::sqrt(A[i] * A[j]) * (1 - kk);
@@ -1299,6 +1273,7 @@ int main() {
   for (int i = 1; i <= kNumComponents; i++) {
     for (int j = 1; j <= kNumComponents; j++) {
       for (int l = 1; l <= kNumComponents; l++) {
+        if (x[i] <= 0.0 || x[j] <= 0.0 || x[l] <= 0.0) continue;
         double k1 = 1 - kBwrsMixCoef * std::sqrt(V[i] * V[j])
                  / std::pow(std::cbrt(V[i]) + std::cbrt(V[j]), 3);
         double k2 = 1 - kBwrsMixCoef * std::sqrt(V[i] * V[l])
@@ -1306,12 +1281,12 @@ int main() {
         double k3 = 1 - kBwrsMixCoef * std::sqrt(V[j] * V[l])
                  / std::pow(std::cbrt(V[j]) + std::cbrt(V[l]), 3);
         bwr.a     += x[i] * x[j] * x[l]
-                   * std::cbrt(a[i]*a[j]*a[l] * (1-k1)*(1-k2)*(1-k3));
+                   * std::cbrt(a[i]*a[j]*a[l]) * (1-k1)*(1-k2)*(1-k3);
         bwr.b     += x[i] * x[j] * x[l] * std::cbrt(b[i]*b[j]*b[l]);
         bwr.c     += x[i] * x[j] * x[l]
                    * std::cbrt(c[i]*c[j]*c[l]) * (1-k1)*(1-k2)*(1-k3);
         bwr.dv    += x[i] * x[j] * x[l]
-                   * std::cbrt(dv[i]*dv[j]*dv[l] * (1-k1)*(1-k2)*(1-k3));
+                   * std::cbrt(dv[i]*dv[j]*dv[l]) * (1-k1)*(1-k2)*(1-k3);
         bwr.alpha += x[i] * x[j] * x[l]
                    * std::cbrt(alfa[i]*alfa[j]*alfa[l]);
       }
@@ -1329,6 +1304,10 @@ int main() {
     zcam           += x[i] * Zc[i];
     mx             += x[i] * std::sqrt(m[i]);
   }
+
+  double cp_mix = 0.0;
+  for (int i = 1; i <= kNumComponents; i++) cp_mix += x[i] * kCp0[i];
+  double kappa_mix = cp_mix / (cp_mix - kGasConstantRSI);
 
   double t_mix_us = Us(Clock::now() - t_mix0).count();
 
@@ -1513,6 +1492,10 @@ int main() {
       auto   t_rho0 = Clock::now();
       double ro = CalcDensity(temperatura, presiunea / kKpaPerAtm, bwr, &iter_rho);
       double t_rho_us = Us(Clock::now() - t_rho0).count();
+      if (!std::isfinite(ro) || ro <= 0.0) {
+        PrintError(ErrorCode::kNumeric, 0);
+        break;  // eroare -> reselect dispozitiv / conditii
+      }
 
       double roc_red = ro / roc_crit;
       auto   t_eta0 = Clock::now();
@@ -1532,7 +1515,7 @@ int main() {
       FlowResult flow;
       auto   t_qm0 = Clock::now();
       double qm = CalcMassFlow(presiunea_dif, presiunea, temperatura,
-                       tip, d_int, d_orif, ro, eta, &flow, &iter_qm);
+                       tip, d_int, d_orif, ro, eta, &flow, kappa_mix, &iter_qm);
       double t_qm_us = Us(Clock::now() - t_qm0).count();
       if (qm == 0.0) break;  // eroare -> reselect dispozitiv
 
@@ -1586,6 +1569,7 @@ int main() {
       row("Num\xc4\x83r Reynolds Re", "%10.4g", flow.reynolds, "\xe2\x80\x94");
       row("Coeficient debit C", "%10.6f", flow.coef_c, "\xe2\x80\x94");
       row("Factor expansibilitate \xce\xb5", "%10.6f", flow.epsilon, "\xe2\x80\x94");
+      row("Exponent izentropic k", "%10.4f", flow.kappa, "\xe2\x80\x94");
 
       std::printf("\n");
       sep_d();
