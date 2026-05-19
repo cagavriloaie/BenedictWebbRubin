@@ -48,7 +48,7 @@
 //   displays an error message when a limit is exceeded.
 //
 // DENSITY ALGORITHM
-//   Bisection on the BWRS equation (Starling 1973, 11 parameters) until
+//   Bisection on the BWRS equation (Starling 1973, 11 parameters) until 
 //   convergence |p_calc − p| < 5×10⁻⁴ atm.  Equation of state:
 //     p = ρRT + (B₀RT − A₀ − C₀/T² + D₀/T³ − E₀/T⁴)ρ²
 //             + (bRT − a − d/T)ρ³ + α(a + d/T)ρ⁶
