@@ -1,69 +1,68 @@
 // =============================================================================
-// BWRS — Calcul debit gaze prin dispozitive de strangulare
-// Revizia 3.0  |  05.2026
-// ing. Agavriloaie Constantin  (original R 01.2004)
+// BWRS — Gas flow calculation through throttling devices
+// Revision 3.0  |  05.2026
+// Eng. Agavriloaie Constantin  (original R 01.2004)
 // ELCOST Impex
 // =============================================================================
 //
-// DESCRIERE
-//   Aplicația calculează densitatea, vâscozitatea dinamică și debitele unui
-//   amestec de gaze cu până la 35 de componente, pe baza:
-//     • ecuației de stare Benedict-Webb-Rubin-Starling (BWRS) pentru densitate;
-//     • modelului Chapman-Enskog corectat cu termenul de densitate ridicată
-//       pentru vâscozitate;
-//     • metodei ISO 5167-2/3/4:2003 (ecuația Reader-Harris/Gallagher)
-//       pentru calculul debitului prin dispozitive de strangulare.
+// DESCRIPTION
+//   Calculates density, dynamic viscosity, and flow rates for a gas mixture
+//   of up to 35 components, based on:
+//     • Benedict-Webb-Rubin-Starling (BWRS) equation of state for density;
+//     • Chapman-Enskog model with high-density correction for viscosity;
+//     • ISO 5167-2/3/4:2003 (Reader-Harris/Gallagher equation)
+//       for flow rate through throttling devices.
 //
-// INTRĂRI
-//   1. Compoziția amestecului — fracții molare pentru fiecare din cei
-//      35 de componenți (metan, etan, propan, ... acetilenă).
-//   2. Tipul dispozitivului de strangulare (1–9):
-//        [1] Diafragmă cu prize în unghi
-//        [2] Diafragmă cu prize la flanșă
-//        [3] Diafragmă cu prize la D și D/2
-//        [4] Ajutaj ISA 1932
-//        [5] Ajutaj cu rază lungă
-//        [6] Tub Venturi clasic — convergent brut turnat
-//        [7] Tub Venturi clasic — convergent prelucrat
-//        [8] Tub Venturi clasic — convergent brut din tablă sudată
-//        [9] Ajutaj Venturi
-//   3. Diametrul interior al conductei D [mm] și diametrul orificiului d [mm]
-//      (la temperatura de referință de 20 °C).
-//   4. Temperatura T [°C], presiunea absolută p [kPa] și presiunea
-//      diferențială Δp [kPa] la locul de măsurare.
+// INPUTS
+//   1. Mixture composition — molar fractions for each of the
+//      35 components (methane, ethane, propane, ... acetylene).
+//   2. Throttling device type (1–9):
+//        [1] Orifice plate — corner taps
+//        [2] Orifice plate — flange taps
+//        [3] Orifice plate — D and D/2 taps
+//        [4] ISA 1932 nozzle
+//        [5] Long-radius nozzle
+//        [6] Classical Venturi tube — rough-cast convergent
+//        [7] Classical Venturi tube — machined convergent
+//        [8] Classical Venturi tube — rough-welded sheet-metal convergent
+//        [9] Venturi nozzle
+//   3. Pipe inner diameter D [mm] and orifice diameter d [mm]
+//      (at 20 °C reference temperature).
+//   4. Temperature T [°C], absolute pressure p [kPa], and differential
+//      pressure Δp [kPa] at the measurement point.
 //
-// IEȘIRI (pentru fiecare set T / p / Δp)
-//   • Densitatea amestecului ρ(T, p)           [kg/m³]
-//   • Vâscozitatea dinamică η(T, p)            [μPa·s]
-//   • Debitul masic Qm                         [kg/s]
-//   • Debitul volumic la condiții de referință selectabile
-//       (0 °C / 101,325 kPa → Nm³/h; 15 °C / 101,325 kPa → Sm³/h; etc.)
-//   • Debitul volumic la T și p                [m³/h]
-//   • Viteza medie a gazului în conductă       [m/s]
-//   • Pierderea de presiune prin strangulare   [kPa]
-//   • Raportul de strangulare β și numărul Reynolds Re
+// OUTPUTS (for each T / p / Δp set)
+//   • Mixture density ρ(T, p)                  [kg/m³]
+//   • Dynamic viscosity η(T, p)                [μPa·s]
+//   • Mass flow rate Qm                        [kg/s]
+//   • Volumetric flow at selectable reference conditions
+//       (0 °C / 101.325 kPa → Nm³/h; 15 °C / 101.325 kPa → Sm³/h; etc.)
+//   • Volumetric flow at T and p               [m³/h]
+//   • Mean gas velocity in pipe                [m/s]
+//   • Permanent pressure loss                  [kPa]
+//   • Throttling ratio β and Reynolds number Re
 //
-// VALIDĂRI
-//   Aplicația verifică limitele de aplicabilitate ISO 5167 / STAS 7347-90
-//   pentru diametrul conductei, diametrul orificiului, raportul de strangulare β
-//   și numărul Reynolds Re — și afișează mesaj de eroare la depășire.
+// VALIDATION
+//   Checks ISO 5167 applicability limits for pipe diameter,
+//   orifice diameter, throttling ratio β, and Reynolds number Re —
+//   displays an error message when a limit is exceeded.
 //
-// ALGORITM DENSITATE
-//   Bisecție pe ecuația BWRS (Starling 1973, 11 parametri) până la
-//   convergența |p_calc − p| < 5×10⁻⁴ atm.  Ecuația de stare:
+// DENSITY ALGORITHM
+//   Bisection on the BWRS equation (Starling 1973, 11 parameters) until
+//   convergence |p_calc − p| < 5×10⁻⁴ atm.  Equation of state:
 //     p = ρRT + (B₀RT − A₀ − C₀/T² + D₀/T³ − E₀/T⁴)ρ²
 //             + (bRT − a − d/T)ρ³ + α(a + d/T)ρ⁶
 //             + (c/T²)ρ³(1 + γρ²)exp(−γρ²)
-//   Constantele amestecului se calculează o singură dată din compoziție
-//   prin reguli de mixare pătratice (A₀–E₀, γ) și cubice (a–d, α).
+//   Mixture constants are computed once from composition using quadratic
+//   mixing rules (A₀–E₀, γ) and cubic mixing rules (a–d, α).
 //
-// ALGORITM DEBIT
-//   Iterație pe numărul Reynolds până la convergența relativă |ΔQm/Qm| < 10⁻⁶.
-//   Coeficientul de debit C și factorul de expansibilitate ε sunt recalculați
-//   la fiecare iterație în funcție de Re și β.
+// FLOW ALGORITHM
+//   Reynolds iteration until relative convergence |ΔQm/Qm| < 10⁻⁶.
+//   Discharge coefficient C and expansibility factor ε are recalculated
+//   at each iteration as a function of Re and β.
 //
-// REFERINȚE
-//   • ISO 5167-2:2003 — Orifice plates (ecuația Reader-Harris/Gallagher)
+// REFERENCES
+//   • ISO 5167-2:2003 — Orifice plates (Reader-Harris/Gallagher equation)
 //   • ISO 5167-3:2003 — Nozzles and Venturi nozzles
 //   • ISO 5167-4:2003 — Venturi tubes
 //   • Starling K.E. (1973) — Fluid Thermodynamic Properties for Light
@@ -96,10 +95,8 @@ static constexpr double kVTableScale    = 1.0e3;    // V stored ×1000
 static constexpr double kEtTableScale   = 1.0e4;    // et stored ×10000
 static constexpr double kGasConstantRSI = 8.31446;  // R [J/(mol·K)] for κ = Cp/(Cp−R)
 
-// Funcție: LoadComposition
-// Intrări: x — tablou de ieșire pentru fracțiile molare (indexat 1..kNumComponents)
-// Ieșire:  true dacă fișierul kCompFile a fost citit complet
-// Scop:    încarcă compoziția amestecului salvată anterior
+// Loads previously saved mixture composition from kCompFile.
+// Returns true if the file was read successfully.
 static bool LoadComposition(double* x) {
   FILE* f = nullptr;
   fopen_s(&f, kCompFile, "r");
@@ -116,26 +113,24 @@ static bool LoadComposition(double* x) {
   return true;
 }
 
-// Funcție: SaveComposition
-// Intrări: x — fracțiile molare ale amestecului (indexat 1..kNumComponents)
-// Ieșire:  —
-// Scop:    persistă compoziția curentă în fișierul kCompFile
+// Saves current mixture composition to kCompFile.
 static void SaveComposition(const double* x) {
   FILE* f = nullptr;
   fopen_s(&f, kCompFile, "w");
   if (!f) {
+    std::printf("%s  Could not open %s for writing.%s\n", kBoldRed, kCompFile, kReset);
     return;
   }
-  for (int i = 1; i <= kNumComponents; i++) {
-    std::fprintf(f, "%.8f\n", x[i]);
-  }
-  std::fclose(f);
+  bool ok = true;
+  for (int i = 1; i <= kNumComponents; i++)
+    ok &= (std::fprintf(f, "%.8f\n", x[i]) > 0);
+  if (std::fclose(f) != 0 || !ok)
+    std::printf("%s  Write error: %s may be incomplete (disk full?).%s\n",
+                kBoldRed, kCompFile, kReset);
 }
 
-// Funcție: LoadConfig
-// Intrări: tip_raw — ieșire cod dispozitiv; d_int — ieșire D interior [mm]; d_orif — ieșire D orificiu [mm]
-// Ieșire:  true dacă fișierul kConfFile a fost citit complet (3 valori)
-// Scop:    reîncarcă configurația dispozitivului salvată anterior
+// Loads previously saved device configuration from kConfFile.
+// Returns true if all three values were read successfully.
 static bool LoadConfig(int* tip_raw, double* d_int, double* d_orif) {
   FILE* f = nullptr;
   fopen_s(&f, kConfFile, "r");
@@ -147,67 +142,66 @@ static bool LoadConfig(int* tip_raw, double* d_int, double* d_orif) {
   return ok;
 }
 
-// Funcție: SaveConfig
-// Intrări: tip_raw — codul dispozitivului; d_int — D interior [mm]; d_orif — D orificiu [mm]
-// Ieșire:  —
-// Scop:    persistă configurația curentă a dispozitivului în fișierul kConfFile
+// Saves current device configuration to kConfFile.
 static void SaveConfig(int tip_raw, double d_int, double d_orif) {
   FILE* f = nullptr;
   fopen_s(&f, kConfFile, "w");
   if (!f) {
+    std::printf("%s  Could not open %s for writing.%s\n", kBoldRed, kConfFile, kReset);
     return;
   }
-  std::fprintf(f, "%d\n%.4f\n%.4f\n", tip_raw, d_int, d_orif);
-  std::fclose(f);
+  bool ok = (std::fprintf(f, "%d\n%.4f\n%.4f\n", tip_raw, d_int, d_orif) > 0);
+  if (std::fclose(f) != 0 || !ok)
+    std::printf("%s  Write error: %s may be incomplete (disk full?).%s\n",
+                kBoldRed, kConfFile, kReset);
 }
 
-// Funcție: ExitApp
-// Intrări: —
-// Ieșire:  — (nu returnează; termină procesul cu std::exit)
-// Scop:    șterge ecranul, afișează mesajul de ieșire și încheie aplicația la apăsarea ESC
+// Clears the screen, shows the exit message, and terminates the process (ESC key).
 static void ExitApp() {
-  std::printf("\033[2J\033[H%s\n  ELCOST Impex  —  BWR Gas Flow Calculator  v2.0/2026%s\n",
-              kBoldYellow, kReset);
+  std::printf("\033[2J\033[H%s\n  ELCOST Impex  —  BWR Gas Flow Calculator  v3.0/2026%s\n",
+              kYellow, kReset);
   std::exit(0);
 }
 
-// Funcție: ReadDouble
-// Intrări: val — pointer la variabila de ieșire
-// Ieșire:  valoarea citită prin *val (0.0 dacă nu s-a introdus nimic)
-// Scop:    citire interactivă a unui număr real cu ecou, backspace și ESC
-static void ReadDouble(double* val) {
+// Reads a real number interactively with echo, backspace, and ESC support.
+// Returns false if the user presses Backspace on an empty field (go-back signal).
+static bool ReadDouble(double* val) {
   char buf[64] = {};
   int pos = 0;
   for (;;) {
     int ch = _getch();
-    if (ch == 27) {
-      ExitApp();
-    }
-    if (ch == 0 || ch == 0xE0) {
-      (void)_getch();
-      continue;
-    }
+    if (ch == 27) ExitApp();
+    if (ch == 0 || ch == 0xE0) { (void)_getch(); continue; }
     if (ch == '\r') {
       std::printf("\n");
       std::fflush(stdout);
       break;
     }
-    if ((ch == 8 || ch == 127) && pos > 0) {
-      pos--;
-      std::printf("\b \b");
-      std::fflush(stdout);
+    if (ch == 8 || ch == 127) {
+      if (pos > 0) {
+        pos--;
+        std::printf("\b \b");
+        std::fflush(stdout);
+      } else {
+        std::printf("\xe2\x86\x90\n");   // ←
+        std::fflush(stdout);
+        *val = 0.0;
+        return false;
+      }
       continue;
     }
-    if (pos < (int)sizeof(buf) - 2 && ((ch >= '0' && ch <= '9') || ch == '.' || (ch == '-' && pos == 0))) {
+    if (pos < (int)sizeof(buf) - 2 &&
+        ((ch >= '0' && ch <= '9') || ch == '.' || (ch == '-' && pos == 0))) {
       buf[pos++] = static_cast<char>(ch);
       std::printf("%c", ch);
       std::fflush(stdout);
     }
   }
   *val = (pos > 0) ? std::atof(buf) : 0.0;
+  return true;
 }
 
-// Scop: citește un singur caracter cifră în intervalul [lo, hi] fără a necesita ENTER
+// Reads a single digit character in the range [lo, hi] without requiring ENTER.
 static int ReadChoice(int lo, int hi) {
   for (;;) {
     int ch = _getch();
@@ -221,18 +215,15 @@ static int ReadChoice(int lo, int hi) {
   }
 }
 
-// Funcție: AskYesNo
-// Intrări: —
-// Ieșire:  true pentru 'd'/'D' (da), false pentru 'n'/'N' (nu)
-// Scop:    blochează până la apăsarea d/n; ESC termină aplicația
+// Blocks until y/n is pressed; ESC exits the application.
 static bool AskYesNo() {
   for (;;) {
     int ch = _getch();
     if (ch == 27) {
       ExitApp();
     }
-    if (ch == 'd' || ch == 'D') {
-      std::printf("d\n");
+    if (ch == 'y' || ch == 'Y') {
+      std::printf("y\n");
       std::fflush(stdout);
       return true;
     }
@@ -244,10 +235,8 @@ static bool AskYesNo() {
   }
 }
 
-// Funcție: Utf8ExtraBytes
-// Intrări: s — șir UTF-8
-// Ieșire:  numărul de octeți de continuare (bit-pattern 10xxxxxx)
-// Scop:    corectarea lungimii vizuale: strlen(s) - Utf8ExtraBytes(s) = nr. caractere afișate
+// Returns count of UTF-8 continuation bytes (10xxxxxx) in s.
+// strlen(s) − Utf8ExtraBytes(s) = number of displayed characters.
 static int Utf8ExtraBytes(const char* s) {
   int n = 0;
   while (*s) {
@@ -261,23 +250,20 @@ static int Utf8ExtraBytes(const char* s) {
 
 static const char* const kCompNames[] = {
     nullptr,
-    "Metan", "Etan", "Propan", "Izobutan", "N-butan",
-    "Neopentan", "Izopentan", "N-pentan", "2,2-dimetilbutan", "2,3-dimetilbutan",
-    "3-metilpentan", "2-metilpentan", "N-hexan", "2,4-dimetilpentan", "2,2,3-trimetilbutan",
-    "2-metilhexan", "3-metilhexan", "3-etilpentan", "N-heptan", "2,2,4-trimetilpentan",
-    "N-octan", "Benzen", "Toluen", "Hidrogen", "Monoxid de carbon",
-    "Hidrogen sulfurat", "Heliu", "Argon", "Azot", "Oxigen",
-    "Dioxid de carbon", "Etilen\xC4\x83", "Propilen\xC4\x83", "Amoniac", "Acetilen\xC4\x83"
+    "Methane", "Ethane", "Propane", "Isobutane", "N-butane",
+    "Neopentane", "Isopentane", "N-pentane", "2,2-dimethylbutane", "2,3-dimethylbutane",
+    "3-methylpentane", "2-methylpentane", "N-hexane", "2,4-dimethylpentane", "2,2,3-trimethylbutane",
+    "2-methylhexane", "3-methylhexane", "3-ethylpentane", "N-heptane", "2,2,4-trimethylpentane",
+    "N-octane", "Benzene", "Toluene", "Hydrogen", "Carbon monoxide",
+    "Hydrogen sulfide", "Helium", "Argon", "Nitrogen", "Oxygen",
+    "Carbon dioxide", "Ethylene", "Propylene", "Ammonia", "Acetylene"
 };
 
-// Funcție: PrintComposition
-// Intrări: x — fracțiile molare ale amestecului (indexat 1..kNumComponents)
-// Ieșire:  —
-// Scop:    afișează tabelul compoziției aliniat în consolă, cu valori evidențiate în verde
+// Prints the mixture composition table aligned in the console, values highlighted in green.
 static void PrintComposition(const double* x) {
-  std::printf("\n%s  ── Compoziție%s\n",
-              kBoldYellow, kReset);
-  std::printf("%s  Fracții molare ale amestecului:%s\n\n", kBoldWhite, kReset);
+  std::printf("\n%s  \xe2\x94\x80\xe2\x94\x80 Composition%s\n",
+              kYellow, kReset);
+  std::printf("%s  Molar fractions of the gas mixture:%s\n\n", kBoldWhite, kReset);
   for (int i = 1; i <= kNumComponents; i++) {
     const char* name = kCompNames[i];
     int visualLen = (int)strlen(name) - Utf8ExtraBytes(name);
@@ -290,17 +276,14 @@ static void PrintComposition(const double* x) {
   std::printf("\n");
 }
 
-// Funcție: main
-// Intrări: —
-// Ieșire:  0 la ieșire normală (nu returnează în mod obișnuit)
-// Scop:    inițializare constante BWRS, citire compoziție/configurație, buclă de calcul debit masic
+// Main: initialises BWRS constants, reads composition/configuration, runs the mass-flow loop.
 int main() {
 #ifdef _WIN32
   std::system("chcp 65001 > nul");
   {
     HANDLE hCon = GetStdHandle(STD_OUTPUT_HANDLE);
 
-    // Setează fontul
+    // Set console font
     CONSOLE_FONT_INFOEX cfi = {};
     cfi.cbSize = sizeof(cfi);
     GetCurrentConsoleFontEx(hCon, FALSE, &cfi);
@@ -308,7 +291,7 @@ int main() {
     wcscpy_s(cfi.FaceName, L"Consolas");
     SetCurrentConsoleFontEx(hCon, FALSE, &cfi);
 
-    // Activează procesarea VT/ANSI
+    // Enable VT/ANSI processing
     DWORD mode = 0;
     GetConsoleMode(hCon, &mode);
     SetConsoleMode(hCon, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
@@ -317,7 +300,7 @@ int main() {
 
   double x[kArraySize] = {};
 
-  // Valori brute; tablourile marcate cu (*) sunt scalate după inițializare
+  // Raw values; arrays marked (*) are scaled after initialisation
   static const double A[kArraySize] = {
        0,         1.79894,   4.15556,   6.87225,  10.23264,  10.0847,   12.8,     12.7959,  12.1794,  11.842,
       16.43,     12.203,    12.203,    14.4373,   12.423,    12.423,    14.31,    14.31,    14.31,    17.5206,
@@ -387,7 +370,7 @@ int main() {
   static double et[kArraySize] = {  // (*) /= 10000
        0,        0.1085,   0.0915,    0.0805,    0.0735,    0.0725,    0.0711,   0.0696,   0.067,    0.0666,
        0.0658,   0.0647,   0.0651,    0.0641,    0.0626,    0.0626,    0.061,    0.0619,   0.0616,   0.0607,
-       0.05947,  0.0577,   0.0745,    0.066,     0.0715,    0.1636,    0.141,    0.071,    0.174,    0.1755,
+       0.05947,  0.0577,   0.0745,    0.066,     0.0836,    0.1636,    0.141,    0.071,    0.2126,   0.1755,
        0.2025,   0.1465,   0.094,     0.078,     0.093,     0.0943};
 
   static const double Tc[kArraySize] = {
@@ -408,11 +391,11 @@ int main() {
        0.274,    0.256,    0.274,     0.271,     0.304,     0.294,     0.268,    0.3,      0.296,    0.291,
        0.292,    0.274,    0.27,      0.274,     0.242,     0.274};
 
-  // D₀, E₀, d — parametri Starling (1973); completează din Tabel 1, pag. 19.
-  // Valorile 0 reduc BWRS exact la BWR — înlocuiește pe rând per componentă.
-  // Surse: Nishiumi & Saito (J.CEJ 1975) pentru C1–C8 și gaze permanente;
-  // Starling (1973) pentru CO₂, H₂S, CO; Poling et al. (2001) pentru Ar, NH₃;
-  // estimare prin corelație Tc/Pc (marcate *) pentru izomerii fără date publicate.
+  // D₀, E₀, d — Starling (1973) parameters; see Table 1, p. 19.
+  // Zero values reduce BWRS exactly to BWR — replace per component as data become available.
+  // Sources: Nishiumi & Saito (J.CEJ 1975) for C1–C8 and permanent gases;
+  // Starling (1973) for CO₂, H₂S, CO; Poling et al. (2001) for Ar, NH₃;
+  // estimated from Tc/Pc correlation (marked *) for isomers without published data.
   static const double D0[kArraySize] = {  // D₀ [atm·L²·K³/mol²]
        0,   1.218e5,  7.697e5,  3.362e6,  7.044e6,  9.699e6,
        1.448e7,      1.991e7,  2.089e7,  2.524e7,  2.583e7,  // *9,*10
@@ -440,15 +423,15 @@ int main() {
        2.027e-1,     1.00e-4,  1.100e-2, 1.601e-2, 2.100e-2,
        3.849e-1,     1.000e-1, 9.500e-1, 6.000e-1, 2.000e-1}; // *33,*34,*35
 
-  // Cp° ideal-gas [J/(mol·K)] at 20 °C — pentru κ = Cp/(Cp − R) cu R = 8.314 J/(mol·K)
-  // Surse: NIST WebBook; izomerii C5–C8 estimați din grupuri funcționale (±2 J/(mol·K))
+  // Cp° ideal-gas [J/(mol·K)] at 20 °C — for κ = Cp/(Cp − R) with R = 8.314 J/(mol·K)
+  // Sources: NIST WebBook; C5–C8 isomers estimated from functional groups (±2 J/(mol·K))
   static const double kCp0[kArraySize] = {
        0,      35.7,  52.5,  73.6,  97.5,  96.4, 120.9, 118.9, 120.1, 141.3,
      140.9,  141.7, 141.2, 143.1, 164.8, 163.4, 165.0, 165.0, 165.1, 166.1,
      188.9,  188.9,  82.4, 103.7,  28.8,  29.1,  34.2,  20.8,  20.8,  29.1,
       29.4,   37.1,  42.9,  63.9,  35.7,  44.0};
 
-  // Scalare tablouri (*) — executată o singură dată la pornire
+  // Scale arrays marked (*) — done once at startup
   for (int i = 1; i <= kNumComponents; i++) {
     B[i] /= kBTableScale;
   }
@@ -476,81 +459,80 @@ int main() {
 
   std::printf("\033[2J\033[H\n");
 
-  // ── Antet principal ────────────────────────────────────────────────────────
+  // ── Main header ────────────────────────────────────────────────────────────
   std::printf(
-      "%s  ══════════════════════════════════════════════════════════════════════════════\n"
-      "  %sELCOST Impex%s  ·  BWRS Gas Flow Calculator                          v3.0/2026\n"
-      "  ══════════════════════════════════════════════════════════════════════════════\n\n",
+      "%s  \xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\n"
+      "  %sELCOST Impex%s  \xc2\xb7  BWRS Gas Flow Calculator                          v3.0/2026\n"
+      "  \xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\n\n",
       kHdrYellow, kHdrGreen, kHdrYellow);
 
-  // ── Modele de calcul ───────────────────────────────────────────────────────
-  std::printf("%s  MODELE DE CALCUL%s\n", kHdrCyan, kReset);
+  // ── Calculation models ─────────────────────────────────────────────────────
+  std::printf("%s  CALCULATION MODELS%s\n", kHdrCyan, kReset);
   std::printf(
-      "  %sEcuație de stare%s    BWRS · Starling 1973  —  Benedict-Webb-Rubin-Starling, 11 param.\n"
-      "  %sVâscozitate%s         Chapman-Enskog cu corecție la densitate ridicată  [Nishiumi 1975]\n"
-      "  %sCoeficient C, ε%s     Reader-Harris/Gallagher  ·  ISO 5167-2/3/4:2003\n\n",
+      "  %sEquation of state%s   BWRS \xc2\xb7 Starling 1973  \xe2\x80\x94  Benedict-Webb-Rubin-Starling, 11 param.\n"
+      "  %sViscosity%s           Chapman-Enskog with high-density correction  [Nishiumi 1975]\n"
+      "  %sC coefficient, \xce\xb5%s    Reader-Harris/Gallagher  \xc2\xb7  ISO 5167-2/3/4:2003\n\n",
       kBoldWhite, kReset, kBoldWhite, kReset, kBoldWhite, kReset);
 
-  // ── Domeniu ────────────────────────────────────────────────────────────────
-  std::printf("%s  DOMENIU DE APLICARE%s\n", kHdrCyan, kReset);
+  // ── Scope ──────────────────────────────────────────────────────────────────
+  std::printf("%s  SCOPE OF APPLICATION%s\n", kHdrCyan, kReset);
   std::printf(
-      "  35 componenți  ·  9 tipuri dispozitive de strangulare\n"
-      "  Debit masic, volumic, viteză, pierdere presiune  ·  condiții ref. selectabile\n"
-      "  Validări limită ISO 5167 / STAS 7347-90  (D, β, Re)\n\n");
+      "  35 components  \xc2\xb7  9 throttling device types\n"
+      "  Mass flow, volumetric flow, velocity, pressure loss  \xc2\xb7  selectable reference conditions\n"
+      "  ISO 5167 limit validation  (D, \xce\xb2, Re)\n\n");
 
-  // ── Standarde și referințe ─────────────────────────────────────────────────
+  // ── Standards and references ───────────────────────────────────────────────
   std::printf(
-      "%s  ──────────────────────────────────────────────────────────────────────────────\n"
-      "  %sSTANDARDE ȘI REFERINȚE%s\n",
+      "%s  \xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\n"
+      "  %sSTANDARDS AND REFERENCES%s\n",
       kHdrYellow, kHdrCyan, kReset);
   std::printf(
-      "  %sISO 5167-2:2003%s   Diafragme — ecuația Reader-Harris/Gallagher\n"
-      "  %sISO 5167-3:2003%s   Ajutaje și ajutaje Venturi\n"
-      "  %sISO 5167-4:2003%s   Tuburi Venturi clasice\n"
-      "  %sSTAS 7347-90%s      Limite de aplicabilitate (D, β, Re)\n"
+      "  %sISO 5167-2:2003%s   Orifice plates \xe2\x80\x94 Reader-Harris/Gallagher equation\n"
+      "  %sISO 5167-3:2003%s   Nozzles and Venturi nozzles\n"
+      "  %sISO 5167-4:2003%s   Classical Venturi tubes\n"
       "  %sStarling K.E.%s     Fluid Thermodynamic Properties, Gulf Publ. Houston (1973)\n"
-      "  %sNishiumi & Saito%s  J. Chem. Eng. Japan 8(5), 356–360 (1975)\n\n",
+      "  %sNishiumi & Saito%s  J. Chem. Eng. Japan 8(5), 356\xe2\x80\x93" "360 (1975)\n\n",
       kBoldWhite, kReset, kBoldWhite, kReset, kBoldWhite, kReset,
-      kBoldWhite, kReset, kBoldWhite, kReset, kBoldWhite, kReset);
+      kBoldWhite, kReset, kBoldWhite, kReset);
 
-  // ── Validare ───────────────────────────────────────────────────────────────
+  // ── Validation ─────────────────────────────────────────────────────────────
   std::printf(
-      "%s  ──────────────────────────────────────────────────────────────────────────────\n"
-      "  %sVALIDARE%s\n",
+      "%s  \xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\n"
+      "  %sVALIDATION%s\n",
       kHdrYellow, kHdrCyan, kReset);
   std::printf(
-      "  ρ  verificat pe 8 compoziții (CH\xe2\x82\x84, C\xe2\x82\x82H\xe2\x82\x86, CO\xe2\x82\x82,"
-      " H\xe2\x82\x82, N\xe2\x82\x82, Ar, GN std, GN bogat)  vs. NIST WebBook\n"
-      "  η  verificat vs. Chapman-Enskog / NIST\n"
-      "  Qm verificat \xc2\xb1" "15 %% față de estimări ISO 5167  ·  9 tipuri dispozitive\n\n");
+      "  \xcf\x81  validated for 8 compositions (CH\xe2\x82\x84, C\xe2\x82\x82H\xe2\x82\x86, CO\xe2\x82\x82,"
+      " H\xe2\x82\x82, N\xe2\x82\x82, Ar, std NG, rich NG)  vs. NIST WebBook\n"
+      "  \xce\xb7  validated vs. Chapman-Enskog / NIST\n"
+      "  Qm validated \xc2\xb1" "15 %% against ISO 5167 estimates  \xc2\xb7  9 device types\n\n");
 
   // ── Footer ─────────────────────────────────────────────────────────────────
   std::printf(
-      "%s  ──────────────────────────────────────────────────────────────────────────────\n"
+      "%s  \xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\n"
       "  %soffice@elcost.ro%s                                   \xc2\xa9 2004\xe2\x80\x93" "2026 ELCOST Impex\n"
-      "%s  ══════════════════════════════════════════════════════════════════════════════\n\n",
+      "%s  \xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\n\n",
       kHdrYellow, kHdrCyan, kReset, kHdrYellow);
 
   std::printf("%s", kReset);
 
-  // ── Self-test opțional la pornire ─────────────────────────────────────────
+  // ── Optional self-test at startup ─────────────────────────────────────────
   {
-    std::printf("%s\n  Rula\xC8\x9Bi testul de validare al implement\xC4\x83rii? [d/n] %s>%s ",
+    std::printf("%s\n  Run implementation validation test? [y/n] %s>%s ",
                 kBoldWhite, kCyan, kReset);
     if (AskYesNo()) {
-      std::printf("\n%s  \xe2\x94\x80\xe2\x94\x80 Test validare implementare%s\n", kBoldYellow, kReset);
+      std::printf("\n%s  \xe2\x94\x80\xe2\x94\x80 Implementation validation test%s\n", kYellow, kReset);
 
       int npass = 0, ntotal = 0;
 
-      // chk: compară o valoare cu un interval și afișează PASS/FAIL
-      // src = sursa intervalului de referinta, afisat la sfarsitul liniei
+      // chk: compares a value against an interval and prints PASS/FAIL
+      // src = reference source label, printed at the end of each line
       auto chk = [&](const char* label, double v, double lo, double hi, const char* src) {
         ntotal++;
         bool ok = (v >= lo && v <= hi);
         if (ok) npass++;
         int vlen = (int)std::strlen(label) - Utf8ExtraBytes(label);
         std::printf("    %s%s", kBoldWhite, label);
-        for (int k = vlen; k < 50; k++) std::putchar(' ');
+        for (int k = vlen; k < 54; k++) std::putchar(' ');
         char ivl[32];
         std::snprintf(ivl, sizeof(ivl), "[%.4f, %.4f]", lo, hi);
         std::printf("%s%-10.5f%s  %-24s  %s%-4s%s  %s[%s]%s\n",
@@ -560,7 +542,7 @@ int main() {
                     kBoldWhite, src, kReset);
       };
 
-      // make_bwr: calculează BwrConst pentru orice compoziție xc[1..kNumComponents]
+      // make_bwr: computes BwrConst for any composition xc[1..kNumComponents]
       auto make_bwr = [&](const double* xc) -> BwrConst {
         BwrConst bt;
         for (int i = 1; i <= kNumComponents; i++) {
@@ -602,7 +584,7 @@ int main() {
         return bt;
       };
 
-      // calc_eta: vâscozitate [Pa·s] la temperatura t[°C] și 1 atm, compoziție xc
+      // calc_eta: viscosity [Pa·s] at temperature t[°C] and 1 atm, composition xc
       auto calc_eta = [&](double t_c, const double* xc,
                           const BwrConst& bt,
                           double roc_crit, double csi) -> double {
@@ -625,19 +607,19 @@ int main() {
         return eta;
       };
 
-      // test_comp: rulează bateria de teste (densitate × 2, vâscozitate, debit masic)
-      //   pentru compoziția xc cu parametri și intervale de referință date.
-      //   d_flow_mm = 0 → sare testul de debit.
+      // test_comp: runs the test suite (density × 2, viscosity, mass flow rate)
+      //   for composition xc with the given parameters and reference intervals.
+      //   d_flow_mm = 0 → skip flow test.
       auto test_comp = [&](const char* comp_name,
                            const double* xc,
-                           double rho20_lo, double rho20_hi,   // densitate 20°C [kg/m³]
-                           double rho0_lo,  double rho0_hi,    // densitate  0°C [kg/m³]
-                           double eta_lo,   double eta_hi,     // vâscozitate 20°C [μPa·s]
-                           double D_mm,     double d_flow_mm,  // D și d [mm] (d=0 → skip)
+                           double rho20_lo, double rho20_hi,   // density 20°C [kg/m³]
+                           double rho0_lo,  double rho0_hi,    // density  0°C [kg/m³]
+                           double eta_lo,   double eta_hi,     // viscosity 20°C [μPa·s]
+                           double D_mm,     double d_flow_mm,  // D and d [mm] (d=0 → skip)
                            double p_kpa,    double dp_kpa,
                            bool leading_nl = true) {
         std::printf(leading_nl ? "\n  %s\xc2\xbb %s%s\n" : "  %s\xc2\xbb %s%s\n",
-                    kBoldYellow, comp_name, kReset);
+                    kYellow, comp_name, kReset);
 
         BwrConst bt = make_bwr(xc);
         double tcam_c = 0.0, pcam_c = 0.0, zcam_c = 0.0;
@@ -652,19 +634,19 @@ int main() {
 
         double rho1 = CalcDensity(20.0, 1.0, bt);
         double rho2 = CalcDensity( 0.0, 1.0, bt);
-        chk("Densitate 20\xC2\xB0""C, 101.325 kPa [kg/m\xC2\xB3]", rho1, rho20_lo, rho20_hi, "BWRS 1973");
-        chk("Densitate  0\xC2\xB0""C, 101.325 kPa [kg/m\xC2\xB3]", rho2, rho0_lo,  rho0_hi,  "BWRS 1973");
-        chk("V\xC3\xA2scozitate 20\xC2\xB0""C, 101.325 kPa [\xC2\xB5Pa\xC2\xB7s]",
+        chk("Density \xcf\x81 20\xC2\xB0""C, 101.325 kPa [kg/m\xC2\xB3]", rho1, rho20_lo, rho20_hi, "BWRS 1973");
+        chk("Density \xcf\x81  0\xC2\xB0""C, 101.325 kPa [kg/m\xC2\xB3]", rho2, rho0_lo,  rho0_hi,  "BWRS 1973");
+        chk("Viscosity \xce\xb7 20\xC2\xB0""C, 101.325 kPa [\xC2\xB5Pa\xC2\xB7s]",
             calc_eta(20.0, xc, bt, roc_crit_c, csi_c) * kPaToMicroPa, eta_lo, eta_hi, "CE/NIST");
-        // Z = p*M / (rho*R*T); la 1 atm, 20°C: Z ∈ [0.975, 1.003] pt. toate gazele comune
+        // Z = p*M / (rho*R*T); at 1 atm, 20°C: Z ∈ [0.975, 1.003] for all common gases
         double T_K1 = 20.0 + kKelvinOffset;
         double Z1   = 1.0 * bt.molar_mass / (rho1 * kGasConstantR * T_K1);
-        chk("Factor Z la 20\xC2\xB0""C, 101.325 kPa [-]", Z1, 0.975, 1.003, "BWRS/ideal");
-        // Masa molara: make_bwr trebuie sa acumuleze exact sum(x[i]*m[i])
+        chk("Compressibility factor Z 20\xC2\xB0""C, 101.325 kPa [-]", Z1, 0.975, 1.003, "BWRS/ideal");
+        // Molar mass: make_bwr must accumulate exactly sum(x[i]*m[i])
         double mx_ref = 0.0;
         for (int ii = 1; ii <= kNumComponents; ii++) mx_ref += xc[ii] * m[ii];
-        chk("Mas\xC4\x83 molar\xC4\x83 M [g/mol]", bt.molar_mass,
-            mx_ref * (1.0 - 1e-8), mx_ref * (1.0 + 1e-8), "amestecare");
+        chk("Molar mass M [g/mol]", bt.molar_mass,
+            mx_ref * (1.0 - 1e-8), mx_ref * (1.0 + 1e-8), "mixing rule");
 
         if (d_flow_mm > 0.0) {
           double rho_f = CalcDensity(20.0, p_kpa / kKpaPerAtm, bt);
@@ -684,8 +666,8 @@ int main() {
                 * std::pow(std::exp(kViscHighExp1 * roc_f) - std::exp(-kViscHighExp2 * roc_f),
                            kViscHighPow);
           double A_o = kPi / 4.0 * (d_flow_mm * 1e-3) * (d_flow_mm * 1e-3);
-          // alpha_nom = C_nominal/sqrt(1-beta^4) la beta=0.4; eps_nom din ISO 5167
-          // Sursa C nominal: ISO 5167-2/3/4:2003 si Reader-Harris/Gallagher la Re=10^6
+          // alpha_nom = C_nominal/sqrt(1-beta^4) at beta=0.4; eps_nom from ISO 5167
+          // C nominal source: ISO 5167-2/3/4:2003 and Reader-Harris/Gallagher at Re=10^6
           static const struct { int tip; const char* abv; double alpha_nom; double eps_nom; }
             tipuri[] = {
               {1, "Dia-U",   0.609, 0.993},
@@ -702,7 +684,7 @@ int main() {
           for (const auto& t : tipuri) {
             FlowResult fr;
             double qm_f = CalcMassFlow(dp_kpa, p_kpa, 20.0,
-                                       static_cast<TipDispozitiv>(t.tip),
+                                       static_cast<DeviceType>(t.tip),
                                        D_mm, d_flow_mm, rho_f, eta_f, &fr);
             if (t.tip == 1) qm_diau = qm_f;
             if (qm_f > 0.0) {
@@ -710,12 +692,12 @@ int main() {
                             * std::sqrt(2000.0 * dp_kpa * rho_f);
               char lbl[80];
               std::snprintf(lbl, sizeof(lbl),
-                            "Qm D=%g,d=%g,p=%g,\xCE\x94p=%g %s [kg/s]",
+                            "Mass flow Qm D=%g,d=%g,p=%g,\xCE\x94p=%g %s [kg/s]",
                             D_mm, d_flow_mm, p_kpa, dp_kpa, t.abv);
               chk(lbl, qm_f, qm_est * 0.85, qm_est * 1.15, "ISO 5167");
             } else {
               ntotal++;
-              std::printf("    %sTest Qm %s: EROARE ISO 5167%s\n", kBoldRed, t.abv, kReset);
+              std::printf("    %sQm test %s: ISO 5167 ERROR%s\n", kBoldRed, t.abv, kReset);
             }
           }
           if (qm_diau > 0.0 && rho2 > 0.0) {
@@ -723,20 +705,20 @@ int main() {
             double qm_est_u = tipuri[0].alpha_nom * tipuri[0].eps_nom * A_o
                             * std::sqrt(2000.0 * dp_kpa * rho_f);
             double qv_est   = qm_est_u / rho2 * kSecondsPerHour;
-            chk("Debit vol. Dia-U, 0\xC2\xB0""C ref [Nm\xC2\xB3/h]",
+            chk("Volumetric flow Qv Dia-U, 0\xC2\xB0""C ref [Nm\xC2\xB3/h]",
                 qv_n, qv_est * 0.85, qv_est * 1.15, "ISO 5167/BWRS");
           }
         }
       };
 
-      // sec_box: afișează o casetă de descriere înaintea unei secțiuni de teste
-      // Format: tabel 3 coloane (Secțiune | Ce verifică | Teste), lățime ~110 car.
+      // sec_box: prints a description box before a test section.
+      // Format: 3-column table (Section | Checks | Tests), width ~110 chars.
       auto sec_box = [](const char* sec, const char* desc, int n) {
         auto hl = [](int cnt) { for (int k = 0; k < cnt; ++k) std::printf("\xe2\x94\x80"); };
         std::printf("\n  \xe2\x94\x8c"); hl(22); std::printf("\xe2\x94\xac"); hl(74);
         std::printf("\xe2\x94\xac"); hl(7); std::printf("\xe2\x94\x90\n");
-        std::printf("  \xe2\x94\x82 %-21s \xe2\x94\x82 %-73s \xe2\x94\x82 %-5s \xe2\x94\x82\n",
-                    "Sec\xc8\x9biune", "Ce verific\xc4\x83", "Teste");
+        std::printf("  \xe2\x94\x82 %-20s \xe2\x94\x82 %-72s \xe2\x94\x82 %-5s \xe2\x94\x82\n",
+                    "Section", "Checks", "Tests");
         std::printf("  \xe2\x94\x9c"); hl(22); std::printf("\xe2\x94\xbc"); hl(74);
         std::printf("\xe2\x94\xbc"); hl(7); std::printf("\xe2\x94\xa4\n");
 
@@ -747,16 +729,16 @@ int main() {
         std::printf("\xe2\x94\xb4"); hl(7); std::printf("\xe2\x94\x98\n");
       };
 
-      // ── Compoziții de test ─────────────────────────────────────────────────
-      // Adăugați oricâte compoziții cu un nou apel test_comp() mai jos.
-      // Indici componente: CH4=1, C2H6=2, C3H8=3, i-C4=4, n-C4=5, H2=24,
-      //   CO=25, H2S=26, He=27, Ar=28, N2=29, O2=30, CO2=31, Amoniac=34
+      // ── Test compositions ──────────────────────────────────────────────────
+      // Add more compositions by calling test_comp() below.
+      // Component indices: CH4=1, C2H6=2, C3H8=3, i-C4=4, n-C4=5, H2=24,
+      //   CO=25, H2S=26, He=27, Ar=28, N2=29, O2=30, CO2=31, Ammonia=34
       //
-      // ── Referințe densitate (BWRS față de gaz ideal la 1 atm) ───────────
-      // Gaz ideal 20°C: rho = M / (R × 293.15) = M / 24.0554 [kg/m³]
-      // Gaz ideal  0°C: rho = M / (R × 273.15) = M / 22.4136 [kg/m³]
+      // ── Density references (BWRS vs ideal gas at 1 atm) ─────────────────
+      // Ideal gas 20°C: rho = M / (R × 293.15) = M / 24.0554 [kg/m³]
+      // Ideal gas  0°C: rho = M / (R × 273.15) = M / 22.4136 [kg/m³]
       //
-      //  Compoziție     M [g/mol] rho_id_20  rho_id_0   B₂(20°C)[L/mol]  rho_BWRS_20
+      //  Composition    M [g/mol] rho_id_20  rho_id_0   B₂(20°C)[L/mol]  rho_BWRS_20
       //  CH4             16.043    0.6672     0.7157     −0.0447           0.668
       //  C2H6            30.070    1.2500     1.3415     −0.195            1.260
       //  CO2             44.011    1.8296     1.9635     −0.147            1.841
@@ -764,118 +746,158 @@ int main() {
       //  N2              28.016    1.1647     1.2498     −0.0044           1.162
       //  Ar              39.944    1.6604     1.7821     −0.018            1.661
       //
-      // Sursa B₂: calculat din parametrii BWRS Starling 1973 prin relația:
+      // B₂ source: computed from BWRS Starling 1973 parameters via:
       //   B₂(T) = B₀ − A₀/(RT) − C₀/(RT³) + D₀/(RT⁴) − E₀/(RT⁵)
       //
-      // ── Referințe vâscozitate (Chapman-Enskog + corectie densitate) ──────
-      //  Compoziție   η_calc [μPa·s]   η_NIST 20°C [μPa·s]   Eroare CE
+      // ── Viscosity references (Chapman-Enskog + density correction) ───────
+      //  Composition  η_calc [μPa·s]   η_NIST 20°C [μPa·s]   CE error
       //  CH4           11.46            10.99                   +4.3 %
       //  C2H6           9.68             9.36                   +3.4 %
       //  CO2           15.49            14.89                   +4.0 %
-      //  H2             7.52             8.77                  −14.3 % (CE<exact ptr H2)
+      //  H2             8.79             8.91                   −1.3 %
       //  N2            18.47            17.54                   +5.3 %
-      //  Ar            18.33            22.72                  −19.3 % (param. vechi)
+      //  Ar            22.41            22.74                   −1.4 %
       //
-      // Sursa NIST: https://webbook.nist.gov (Transport Properties, 100 kPa, 20°C)
+      // NIST source: https://webbook.nist.gov (Transport Properties, 100 kPa, 20°C)
       //
-      // ── Referințe debit masic ────────────────────────────────────────────
-      // Toate testele: D=200 mm, d=80 mm, β=0.4, T=20°C, p=500 kPa, Δp=5 kPa
-      // β=0.4 ales pentru a respecta toate constrângerile ISO 5167 simultan:
-      //   Ven-P/T necesită β≥0.4; Ven-T necesită D≥200 mm; Ven-P Re≤1e6
-      // Rulat pentru toate cele 9 tipuri de dispozitive ISO 5167.
+      // ── Mass flow references ─────────────────────────────────────────────
+      // All tests: D=200 mm, d=80 mm, β=0.4, T=20°C, p=500 kPa, Δp=5 kPa
+      // β=0.4 chosen to satisfy all ISO 5167 constraints simultaneously:
+      //   Ven-P/T requires β≥0.4; Ven-T requires D≥200 mm; Ven-P Re≤1e6
+      // Run for all 9 ISO 5167 device types.
       // Qm_est = alpha_nom × eps_nom × A_o × √(2000 × Δp_kPa × ρ)
       //   A_o = π/4 × (0.08)² = 5.027e−3 m²
-      // Interval acceptat: ±15% față de Qm_est (acoperă variația Re și BWRS)
+      // Accepted range: ±15% of Qm_est (covers Re and BWRS variation)
       //
-      //  Tip       α_nom   ε_nom   C_nom   Sursa C
+      //  Type      α_nom   ε_nom   C_nom   C source
       //  Dia-U     0.609   0.993   0.601   ISO 5167-2, Reader-Harris/Gallagher β=0.4 Re=10⁶
-      //  Dia-F     0.608   0.993   0.601   idem, prize flanșă
-      //  Dia-D/2   0.608   0.993   0.600   idem, prize D și D/2
-      //  Aj-ISA    0.997   0.997   0.985   ISO 5167-3, ajutaj ISA 1932
-      //  Aj-RL     1.005   0.997   0.992   ISO 5167-3, ajutaj rază lungă
-      //  Ven-B     0.997   0.997   0.984   ISO 5167-4, Venturi brut turnat (C=0.984)
-      //  Ven-P     1.008   0.997   0.995   ISO 5167-4, Venturi prelucrat   (C=0.995)
-      //  Ven-T     0.998   0.997   0.985   ISO 5167-4, Venturi tablă sudată (C=0.985)
-      //  Aj-V      0.996   0.997   0.983   ISO 5167-4, ajutaj Venturi (C≈0.983 la β=0.4)
+      //  Dia-F     0.608   0.993   0.601   idem, flange taps
+      //  Dia-D/2   0.608   0.993   0.600   idem, D and D/2 taps
+      //  Aj-ISA    0.997   0.997   0.985   ISO 5167-3, ISA 1932 nozzle
+      //  Aj-RL     1.005   0.997   0.992   ISO 5167-3, long-radius nozzle
+      //  Ven-B     0.997   0.997   0.984   ISO 5167-4, rough-cast Venturi (C=0.984)
+      //  Ven-P     1.008   0.997   0.995   ISO 5167-4, machined Venturi   (C=0.995)
+      //  Ven-T     0.998   0.997   0.985   ISO 5167-4, welded-sheet Venturi (C=0.985)
+      //  Aj-V      0.996   0.997   0.983   ISO 5167-4, Venturi nozzle (C≈0.983 at β=0.4)
       // ───────────────────────────────────────────────────────────────────
 
-      double xCH4[kArraySize] = {}; xCH4[1] = 1.0;   // Metan pur
+      double xCH4[kArraySize] = {}; xCH4[1] = 1.0;   // pure methane
 
-      double xC2H6[kArraySize] = {}; xC2H6[2] = 1.0;  // Etan pur
+      double xC2H6[kArraySize] = {}; xC2H6[2] = 1.0;  // pure ethane
 
-      double xCO2[kArraySize] = {}; xCO2[31] = 1.0;   // CO2 pur
+      double xCO2[kArraySize] = {}; xCO2[31] = 1.0;   // pure CO2
 
-      double xH2[kArraySize] = {}; xH2[24] = 1.0;     // Hidrogen pur
+      double xH2[kArraySize] = {}; xH2[24] = 1.0;     // pure hydrogen
 
-      double xN2[kArraySize] = {}; xN2[29] = 1.0;     // Azot pur
+      double xN2[kArraySize] = {}; xN2[29] = 1.0;     // pure nitrogen
 
-      double xAr[kArraySize] = {}; xAr[28] = 1.0;     // Argon pur
+      double xAr[kArraySize] = {}; xAr[28] = 1.0;     // pure argon
 
-      double xGN[kArraySize] = {};                     // Gaz natural std (STAS 7347)
+      double xGN[kArraySize] = {};                     // standard natural gas
       xGN[1] = 0.900; xGN[2] = 0.060; xGN[3] = 0.020;
       xGN[29] = 0.015; xGN[31] = 0.005;
 
-      double xGNB[kArraySize] = {};                    // Gaz natural bogat
+      double xGNB[kArraySize] = {};                    // rich natural gas
       xGNB[1] = 0.850; xGNB[2] = 0.100; xGNB[3] = 0.030;
       xGNB[29] = 0.010; xGNB[31] = 0.010;
 
-      sec_box("Compozitii test",
-              "8 compozitii: rho(20/0C), eta, Z, masa mol., Qm 9 tipuri ISO 5167", 120);
-      std::printf("  Surse referinta: BWRS 1973 = Starling, K.E. (1973) Fluid Thermodynamic Properties;\n");
-      std::printf("                   CE/NIST   = Chapman-Enskog / NIST WebBook (webbook.nist.gov);\n");
-      std::printf("                   ISO 5167  = ISO 5167-2/3/4:2003 (Reader-Harris/Gallagher).\n\n");
-      std::printf("  Prescurtari dispozitive ISO 5167 (test debit D=200,d=80,p=500,dp=5):\n");
-      std::printf("    Dia-U   = Diafragma prize unghi       Dia-F   = Diafragma prize flansa\n");
-      std::printf("    Dia-D/2 = Diafragma prize D si D/2    Aj-ISA  = Ajutaj ISA 1932\n");
-      std::printf("    Aj-RL   = Ajutaj raza lunga           Ven-B   = Venturi brut turnat\n");
-      std::printf("    Ven-P   = Venturi prelucrat           Ven-T   = Venturi tabla sudata\n");
-      std::printf("    Aj-V    = Ajutaj Venturi\n\n");
+      sec_box("Test compositions",
+              "8 compositions: rho(20/0C), eta, Z, molar mass, Qm 9 ISO 5167 types", 120);
+      std::printf("%s  \xe2\x94\x80\xe2\x94\x80 Legend%s\n", kYellow, kReset);
 
-      //           Compozitie    rho_20[kg/m3]  rho_0[kg/m3]   eta[µPa·s]   D    d   p    dp
-      test_comp("Metan (CH4)",  xCH4, 0.660,0.672, 0.712,0.724, 10.5,12.5, 200,80, 500,5, false);
-      test_comp("Etan (C2H6)",  xC2H6,1.220,1.280, 1.310,1.375,  8.5,10.8, 200,80, 500,5);
-      test_comp("CO2",          xCO2, 1.800,1.860, 1.930,2.000, 14.0,16.8, 200,80, 500,5);
-      test_comp("Hidrogen (H2)",xH2,  0.082,0.085, 0.088,0.091,  7.0,10.5, 200,80, 500,5);
-      test_comp("Azot (N2)",    xN2,  1.155,1.175, 1.240,1.260, 16.5,20.5, 200,80, 500,5);
-      test_comp("Argon (Ar)",   xAr,  1.650,1.672, 1.772,1.794, 17.0,23.0, 200,80, 500,5);
-      test_comp("GN std",       xGN,  0.730,0.748, 0.784,0.802, 10.5,12.5, 200,80, 500,5);
-      test_comp("GN bogat",     xGNB, 0.765,0.790, 0.820,0.848, 10.2,12.5, 200,80, 500,5);
+      std::printf("\n%s  Physical quantities:%s\n", kBoldWhite, kReset);
+      std::printf("    \xcf\x81   [kg/m\xc2\xb3]   density\n");
+      std::printf("    \xce\xb7   [\xc2\xb5Pa\xc2\xb7s]   dynamic viscosity\n");
+      std::printf("    Z   [-]       compressibility factor\n");
+      std::printf("    M   [g/mol]   molar mass\n");
+      std::printf("    Qm  [kg/s]    mass flow rate\n");
+      std::printf("    Qv  [Nm\xc2\xb3/h]   volumetric flow (normal conditions: 0\xc2\xb0""C, 101.325 kPa)\n");
 
-      sec_box("Autonome CH4 pur",
-              "CH4 pur: monotonie rho vs P (x2); factor Z la 20 atm", 3);
-      // ── Teste autonome: comportament fizic CH4 pur ───────────────────────
-      std::printf("  %s\xC2\xBB Teste autonome CH4 pur%s\n", kBoldYellow, kReset);
+      std::printf("\n%s  Flow device parameters:%s\n", kBoldWhite, kReset);
+      std::printf("    D   [mm]      pipe diameter\n");
+      std::printf("    d   [mm]      orifice / throat diameter\n");
+      std::printf("    \xce\xb2   [-]       diameter ratio  \xce\xb2 = d/D\n");
+      std::printf("    p   [kPa]     absolute pressure\n");
+      std::printf("    \xce\x94p  [kPa]     differential pressure\n");
+
+      std::printf("\n%s  ISO 5167 devices:%s\n", kBoldWhite, kReset);
+      std::printf("    Dia-U   = Orifice plate, corner taps\n");
+      std::printf("    Dia-F   = Orifice plate, flange taps\n");
+      std::printf("    Dia-D/2 = Orifice plate, D and D/2 taps\n");
+      std::printf("    Aj-ISA  = ISA 1932 nozzle\n");
+      std::printf("    Aj-RL   = Long-radius nozzle (ASME long-radius)\n");
+      std::printf("    Ven-B   = Venturi tube \xe2\x80\x94 rough-cast convergent      (C \xe2\x89\x88 0.984)\n");
+      std::printf("    Ven-P   = Venturi tube \xe2\x80\x94 machined convergent        (C \xe2\x89\x88 0.995)\n");
+      std::printf("    Ven-T   = Venturi tube \xe2\x80\x94 welded sheet-metal conv.   (C \xe2\x89\x88 0.985)\n");
+      std::printf("    Aj-V    = Venturi nozzle                             (C \xe2\x89\x88 0.983)\n");
+
+      std::printf("\n%s  Reference sources [right column of each test]:%s\n", kBoldWhite, kReset);
+      std::printf("    BWRS 1973     = Benedict-Webb-Rubin-Starling (Starling, K.E., 1973)\n");
+      std::printf("    CE/NIST       = Chapman-Enskog + density correction / NIST WebBook\n");
+      std::printf("    BWRS/ideal    = BWRS vs ideal gas at 101.325 kPa\n");
+      std::printf("    BWRS/NIST     = BWRS compared with NIST WebBook tabulated data\n");
+      std::printf("    NIST/BWRS     = NIST reference, calculated with BWRS\n");
+      std::printf("    BWRS/AGA-8    = BWRS compared with AGA-8 data\n");
+      std::printf("    BWRS/estim.   = BWRS compared with engineering estimate\n");
+      std::printf("    BWRS/Z        = \xcf\x81 monotonicity with Z-factor correction\n");
+      std::printf("    ISO 5167      = ISO 5167-2/3/4:2003 (Reader-Harris/Gallagher)\n");
+      std::printf("    ISO 5167/BWRS = Qv = Qm(ISO 5167) / \xcf\x81(BWRS, 0\xc2\xb0""C, 101.325 kPa)\n");
+      std::printf("    mixing rule   = linear rule  M = \xce\xa3 xi\xc2\xb7Mi\n");
+      std::printf("    ideal gas     = monotonicity test  \xcf\x81(2p)/\xcf\x81(p) \xe2\x89\x88 2\n");
+      std::printf("    ideal gas\xc3\x97Z   = as above, with Z-factor correction\n");
+      std::printf("    single-phase  = Z \xe2\x88\x88 [0.75, 1.02] check (gas phase)\n");
+      std::printf("    quasi-ideal   = \xcf\x81/\xcf\x81_ideal \xe2\x88\x88 [0.990, 1.025] at p \xe2\x89\xa4 500 kPa\n");
+      std::printf("    monotone T    = \xcf\x81(T1) > \xcf\x81(T2) at T1 < T2  (density increases with cooling)\n");
+      std::printf("    monotone P    = \xcf\x81(p1) < \xcf\x81(p2) at p1 < p2  (density increases with pressure)\n");
+      std::printf("    M + Z         = density ratio \xe2\x89\x88 (Ma/Mb) \xc3\x97 (Zb/Za)\n");
+      std::printf("    CE/kinetic    = Chapman-Enskog from kinetic theory (monotone \xce\xb7 vs. T)\n");
+      std::printf("\n");
+
+      //           Composition   rho_20[kg/m3]  rho_0[kg/m3]   eta[µPa·s]   D    d   p    dp
+      test_comp("Methane (CH4)",  xCH4, 0.660,0.672, 0.712,0.724, 10.5,12.5, 200,80, 500,5, false);
+      test_comp("Ethane (C2H6)", xC2H6,1.220,1.280, 1.310,1.375,  8.5,10.8, 200,80, 500,5);
+      test_comp("CO2",           xCO2, 1.800,1.860, 1.930,2.000, 14.0,16.8, 200,80, 500,5);
+      test_comp("Hydrogen (H2)", xH2,  0.082,0.085, 0.088,0.091,  8.2, 9.5, 200,80, 500,5);
+      test_comp("Nitrogen (N2)", xN2,  1.155,1.175, 1.240,1.260, 16.5,20.5, 200,80, 500,5);
+      test_comp("Argon (Ar)",    xAr,  1.650,1.672, 1.772,1.794, 21.0,23.5, 200,80, 500,5);
+      test_comp("Std NG",        xGN,  0.730,0.748, 0.784,0.802, 10.5,12.5, 200,80, 500,5);
+      test_comp("Rich NG",       xGNB, 0.765,0.790, 0.820,0.848, 10.2,12.5, 200,80, 500,5);
+
+      sec_box("Pure CH4 standalone",
+              "Pure CH4: rho monotonicity vs P (x2); Z factor at 20 atm", 3);
+      // ── Standalone tests: physical behaviour of pure CH4 ────────────────
+      std::printf("  %s\xC2\xBB Standalone tests pure CH4%s\n", kYellow, kReset);
       {
         BwrConst bt_a = make_bwr(xCH4);
         double T_a    = 20.0 + kKelvinOffset;
         double rho_05 = CalcDensity(20.0,  0.5, bt_a);   // 50.66 kPa
         double rho_10 = CalcDensity(20.0,  1.0, bt_a);   // 101.325 kPa
         double rho_20 = CalcDensity(20.0, 20.0, bt_a);   // ≈ 2.026 MPa
-        // Gaz ideal: rho(2p)/rho(p) = 2; corectie Z introduce deviatii mici
-        chk("Monotonie \xCF\x81(1atm)/\xCF\x81(0.5atm) CH4 [-]",
-            rho_10 / rho_05, 1.90, 2.10, "gaz ideal");
-        // La 20 atm, Z(CH4)≈0.953 → rho(20)/rho(1) ≈ 20/0.953 ≈ 21.0
-        chk("Monotonie \xCF\x81(20atm)/\xCF\x81(1atm) CH4 [-]",
-            rho_20 / rho_10, 17.0, 23.0, "gaz ideal\xC3\x97Z");
-        // Factor Z la presiune inalta: NIST CH4 20°C, 20atm → Z≈0.953
+        // Ideal gas: rho(2p)/rho(p) = 2; Z correction introduces small deviations
+        chk("Monotone \xCF\x81(1atm)/\xCF\x81(0.5atm) CH4 [-]",
+            rho_10 / rho_05, 1.90, 2.10, "ideal gas");
+        // At 20 atm, Z(CH4)≈0.953 → rho(20)/rho(1) ≈ 20/0.953 ≈ 21.0
+        chk("Monotone \xCF\x81(20atm)/\xCF\x81(1atm) CH4 [-]",
+            rho_20 / rho_10, 17.0, 23.0, "ideal gas\xC3\x97Z");
+        // Z factor at high pressure: NIST CH4 20°C, 20 atm → Z≈0.953
         double Z_hi = 20.0 * bt_a.molar_mass / (rho_20 * kGasConstantR * T_a);
-        chk("Factor Z CH4 la 20\xC2\xB0""C, 20 atm [-]", Z_hi, 0.88, 0.98, "BWRS/NIST");
+        chk("Z factor CH4 20\xC2\xB0""C, 20 atm [-]", Z_hi, 0.88, 0.98, "BWRS/NIST");
       }
 
-      sec_box("Densitate p. ridic.",
-              "CH4/N2/CO2/GN la 500-5066 kPa: rho BWRS, Z, monotonie, consistenta", 8);
-      // ── Densitate la presiune ridicată ────────────────────────────────────
-      // Referințe:
+      sec_box("High-pressure rho",
+              "CH4/N2/CO2/GN at 500-5066 kPa: rho BWRS, Z, monotonicity, consistency", 8);
+      // ── Density at high pressure ──────────────────────────────────────────
+      // References:
       //   CH4  500 kPa, 293.15 K: Z≈0.9986 (NIST)       → ρ≈3.30  kg/m³ (≈ideal)
       //   CH4 5066 kPa, 293.15 K: Z≈0.911  (BWRS/AGA-8) → ρ≈36.6  kg/m³
-      //     Verificare virială: B₂(CH4,293K)≈−44 cm³/mol
-      //     → Z≈1+B₂·P/(RT)=1−0.044·50/24.05=0.909 (consistent cu BWRS 0.911)
-      //     Nota: Z≈0.954 ar corespunde ~27 atm, nu 50 atm (sub temp. Boyle 511 K)
+      //     Virial check: B₂(CH4,293K)≈−44 cm³/mol
+      //     → Z≈1+B₂·P/(RT)=1−0.044·50/24.05=0.909 (consistent with BWRS 0.911)
+      //     Note: Z≈0.954 would correspond to ~27 atm, not 50 atm (below Boyle temp. 511 K)
       //   N2  5066 kPa, 293.15 K: Z≈0.991  (NIST)       → ρ≈58.8  kg/m³
       //   CO2  500 kPa, 293.15 K: Z≈0.974  (NIST)       → ρ≈9.27  kg/m³ (non-ideal)
-      //   GN std 5066 kPa, 20°C : estimat BWRS           → ρ≈38-40 kg/m³
-      // Toleranță ±5%: BWRS Starling 1973 are eroare tipică 1–3% la presiuni ridicate.
-      std::printf("  %s\xc2\xbb Densitate la presiune ridicat\xc4\x83%s\n", kBoldYellow, kReset);
+      //   Std NG 5066 kPa, 20°C : BWRS estimate          → ρ≈38-40 kg/m³
+      // Tolerance ±5%: BWRS Starling 1973 typical error 1–3% at high pressure.
+      std::printf("  %s\xc2\xbb Density at high pressure%s\n", kYellow, kReset);
       {
         BwrConst bCH4 = make_bwr(xCH4);
         BwrConst bN2  = make_bwr(xN2);
@@ -889,53 +911,53 @@ int main() {
         // ─ CH4 ──────────────────────────────────────────────────────────────
         double rCH4_500  = CalcDensity(20.0, p500,  bCH4);
         double rCH4_5066 = CalcDensity(20.0, p5066, bCH4);
-        chk("Densitate CH4 20\xc2\xb0""C,  500 kPa [kg/m\xc2\xb3]",
+        chk("Density CH4 20\xc2\xb0""C,  500 kPa [kg/m\xc2\xb3]",
             rCH4_500,  3.24, 3.35, "NIST/BWRS");
-        chk("Densitate CH4 20\xc2\xb0""C, 5066 kPa [kg/m\xc2\xb3]",
+        chk("Density CH4 20\xc2\xb0""C, 5066 kPa [kg/m\xc2\xb3]",
             rCH4_5066, 34.5, 39.0, "BWRS/AGA-8");
 
-        // Z la 50 atm: B₂(CH4,293K)≈−44 cm³/mol → Z_virial≈0.909; BWRS→0.911
+        // Z at 50 atm: B₂(CH4,293K)≈−44 cm³/mol → Z_virial≈0.909; BWRS→0.911
         double Z50 = p5066 * bCH4.molar_mass
                    / (rCH4_5066 * kGasConstantR * T_K);
-        chk("Factor Z CH4 20\xc2\xb0""C, 50 atm [-]",
+        chk("Z factor CH4 20\xc2\xb0""C, 50 atm [-]",
             Z50, 0.88, 0.95, "BWRS/AGA-8");
 
-        // ─ N2: cvasi-ideal la 50 atm, Z ≈ 0.987 (NIST) ─────────────────────
+        // ─ N2: quasi-ideal at 50 atm, Z ≈ 0.987 (NIST) ─────────────────────
         double rN2_5066 = CalcDensity(20.0, p5066, bN2);
-        chk("Densitate N2  20\xc2\xb0""C, 5066 kPa [kg/m\xc2\xb3]",
+        chk("Density N2  20\xc2\xb0""C, 5066 kPa [kg/m\xc2\xb3]",
             rN2_5066, 56.0, 62.0, "NIST/BWRS");
 
-        // ─ CO2 la 500 kPa: Z ≈ 0.974, mai non-ideal decât CH4 ───────────────
+        // ─ CO2 at 500 kPa: Z ≈ 0.974, more non-ideal than CH4 ───────────────
         double rCO2_500 = CalcDensity(20.0, p500, bCO2);
-        chk("Densitate CO2 20\xc2\xb0""C,  500 kPa [kg/m\xc2\xb3]",
+        chk("Density CO2 20\xc2\xb0""C,  500 kPa [kg/m\xc2\xb3]",
             rCO2_500, 8.90, 9.70, "NIST/BWRS");
 
-        // ─ GN std la 50 atm: presiune tipică de transport ────────────────────
+        // ─ Std NG at 50 atm: typical pipeline pressure ────────────────────
         double rGN_5066 = CalcDensity(20.0, p5066, bGN);
-        chk("Densitate GN std 20\xc2\xb0""C, 5066 kPa [kg/m\xc2\xb3]",
+        chk("Density std NG 20\xc2\xb0""C, 5066 kPa [kg/m\xc2\xb3]",
             rGN_5066, 35.0, 42.0, "BWRS/estim.");
 
-        // ─ Monotonie: ρ(50 atm)/ρ(5 atm) = p_ratio × Z(5 atm)/Z(50 atm) ────
+        // ─ Monotonicity: ρ(50 atm)/ρ(5 atm) = p_ratio × Z(5 atm)/Z(50 atm) ─
         // = 10.13 × (0.9986/0.954) ≈ 10.6
-        chk("Monotonie \xcf\x81 CH4: \xcf\x81(5066)/\xcf\x81(500) [-]",
+        chk("Monotone \xcf\x81 CH4: \xcf\x81(5066)/\xcf\x81(500) [-]",
             rCH4_5066 / rCH4_500, 9.5, 11.5, "BWRS/Z");
 
-        // ─ Consistență: ρ_CO2 > ρ_N2 la aceeași T și p ───────────────────────
-        // M_CO2=44.01 >> M_N2=28.02 și Z_CO2 < Z_N2 → raport ≈ 1.56–1.62
+        // ─ Consistency: ρ_CO2 > ρ_N2 at same T and p ────────────────────────
+        // M_CO2=44.01 >> M_N2=28.02 and Z_CO2 < Z_N2 → ratio ≈ 1.56–1.62
         double rN2_500 = CalcDensity(20.0, p500, bN2);
-        chk("Consisten\xc8\x9b\xc4\x83: \xcf\x81(CO2)/\xcf\x81(N2) la 500 kPa [-]",
+        chk("Consistency: \xcf\x81(CO2)/\xcf\x81(N2) at 500 kPa [-]",
             rCO2_500 / rN2_500, 1.50, 1.65, "M + Z");
       }
 
-      sec_box("GN bogat 4Tx4P",
-              "GN bogat 4Tx4P: Z, rho/rho_ideal, monotonie vs T si vs P", 30);
-      // ── GN bogat: matrice 4 temperaturi × 4 presiuni ─────────────────────
-      // Temperaturi: -10°C (iarnă), 10°C, 30°C, 60°C (vară/compresor)
-      // Presiuni:    101 kPa (ref.), 500 kPa, 2000 kPa, 7000 kPa (transport)
-      // T_min = -10°C = 263.15 K > Tc_pseudo(GNB) ≈ 208 K → gaz monofazic.
-      // Verificări: Z ∈ [0.75, 1.02]; ρ/ρ_ideal la p joasă; monotonie T și P.
-      std::printf("  %s\xc2\xbb GN bogat: matrice T \xc3\x97 P  (4 \xc3\x97 4 condi\xc8\x9bii)%s\n",
-                  kBoldYellow, kReset);
+      sec_box("Rich NG 4Tx4P",
+              "Rich NG 4Tx4P: Z, rho/rho_ideal, monotonicity vs T and vs P", 30);
+      // ── Rich NG: 4-temperature × 4-pressure matrix ───────────────────────
+      // Temperatures: -10°C (winter), 10°C, 30°C, 60°C (summer/compressor)
+      // Pressures:    101 kPa (ref.), 500 kPa, 2000 kPa, 7000 kPa (pipeline)
+      // T_min = -10°C = 263.15 K > Tc_pseudo(GNB) ≈ 208 K → single-phase gas.
+      // Checks: Z ∈ [0.75, 1.02]; ρ/ρ_ideal at low p; monotonicity vs T and P.
+      std::printf("  %s\xc2\xbb Rich NG: T \xc3\x97 P matrix  (4 \xc3\x97 4 conditions)%s\n",
+                  kYellow, kReset);
       {
         BwrConst bGNB = make_bwr(xGNB);
 
@@ -947,7 +969,7 @@ int main() {
 
         double rho[nT][nP] = {};
 
-        // ─── Z ∈ [0.75, 1.02] pentru toate cele 16 condiții ─────────────────
+        // ─── Z ∈ [0.75, 1.02] for all 16 conditions ─────────────────────────
         for (int ti = 0; ti < nT; ti++) {
           for (int pi = 0; pi < nP; pi++) {
             double T_K      = T_c[ti] + kKelvinOffset;
@@ -959,12 +981,12 @@ int main() {
             std::snprintf(lbl, sizeof(lbl),
                           "Z GNB T=%s\xc2\xb0""C P=%s kPa",
                           T_lbl[ti], P_lbl[pi]);
-            chk(lbl, Z, 0.75, 1.02, "gaz monofaz.");
+            chk(lbl, Z, 0.75, 1.02, "single-phase");
           }
         }
 
-        // ─── La p ≤ 500 kPa: ρ/ρ_ideal ∈ [0.990, 1.025] (cvasi-ideal) ──────
-        // Limita sup. 1.025 acoperă T=-10°C unde B_mix≈-85 cm³/mol → Z≈0.981
+        // ─── At p ≤ 500 kPa: ρ/ρ_ideal ∈ [0.990, 1.025] (quasi-ideal) ───────
+        // Upper limit 1.025 covers T=-10°C where B_mix≈-85 cm³/mol → Z≈0.981
         for (int ti = 0; ti < nT; ti++) {
           for (int pi = 0; pi < 2; pi++) {
             double T_K    = T_c[ti] + kKelvinOffset;
@@ -974,62 +996,62 @@ int main() {
             std::snprintf(lbl, sizeof(lbl),
                           "\xcf\x81/\xcf\x81_id GNB T=%s\xc2\xb0""C P=%s kPa",
                           T_lbl[ti], P_lbl[pi]);
-            chk(lbl, rho[ti][pi] / rho_id, 0.990, 1.025, "cvasi-ideal");
+            chk(lbl, rho[ti][pi] / rho_id, 0.990, 1.025, "quasi-ideal");
           }
         }
 
-        // ─── Monotonie față de T la P = 2000 kPa (pi=2): ρ(T1) > ρ(T2) ─────
-        // Raport ρ(T_i)/ρ(T_{i+1}) = (Z_{i+1}/Z_i) × (T_{i+1}/T_i) ≈ 1.07–1.10
-        chk("GNB: \xcf\x81(-10\xc2\xb0""C)/\xcf\x81( 10\xc2\xb0""C) la 2000 kPa",
-            rho[0][2] / rho[1][2], 1.03, 1.15, "monotonie T");
-        chk("GNB: \xcf\x81( 10\xc2\xb0""C)/\xcf\x81( 30\xc2\xb0""C) la 2000 kPa",
-            rho[1][2] / rho[2][2], 1.03, 1.15, "monotonie T");
-        chk("GNB: \xcf\x81( 30\xc2\xb0""C)/\xcf\x81( 60\xc2\xb0""C) la 2000 kPa",
-            rho[2][2] / rho[3][2], 1.03, 1.15, "monotonie T");
+        // ─── Monotonicity vs T at P = 2000 kPa (pi=2): ρ(T1) > ρ(T2) ─────
+        // Ratio ρ(T_i)/ρ(T_{i+1}) = (Z_{i+1}/Z_i) × (T_{i+1}/T_i) ≈ 1.07–1.10
+        chk("GNB: \xcf\x81(-10\xc2\xb0""C)/\xcf\x81( 10\xc2\xb0""C) at 2000 kPa",
+            rho[0][2] / rho[1][2], 1.03, 1.15, "monotone T");
+        chk("GNB: \xcf\x81( 10\xc2\xb0""C)/\xcf\x81( 30\xc2\xb0""C) at 2000 kPa",
+            rho[1][2] / rho[2][2], 1.03, 1.15, "monotone T");
+        chk("GNB: \xcf\x81( 30\xc2\xb0""C)/\xcf\x81( 60\xc2\xb0""C) at 2000 kPa",
+            rho[2][2] / rho[3][2], 1.03, 1.15, "monotone T");
 
-        // ─── Monotonie față de P la T = 10°C (ti=1): ρ(P1) < ρ(P2) ──────────
+        // ─── Monotonicity vs P at T = 10°C (ti=1): ρ(P1) < ρ(P2) ───────────
         // ρ(500)/ρ(101)   ≈ p_ratio × Z(101)/Z(500) ≈ 4.94 × 1.003 ≈ 4.96
-        chk("GNB: \xcf\x81(500)/\xcf\x81(101) la 10\xc2\xb0""C",
-            rho[1][1] / rho[1][0], 4.70, 5.10, "monotonie P");
+        chk("GNB: \xcf\x81(500)/\xcf\x81(101) at 10\xc2\xb0""C",
+            rho[1][1] / rho[1][0], 4.70, 5.10, "monotone P");
         // ρ(2000)/ρ(500)  ≈ 4.00 × Z(500)/Z(2000) ≈ 4.00 × 1.016 ≈ 4.07
-        chk("GNB: \xcf\x81(2000)/\xcf\x81(500) la 10\xc2\xb0""C",
-            rho[1][2] / rho[1][1], 3.70, 4.30, "monotonie P");
+        chk("GNB: \xcf\x81(2000)/\xcf\x81(500) at 10\xc2\xb0""C",
+            rho[1][2] / rho[1][1], 3.70, 4.30, "monotone P");
         // ρ(7000)/ρ(2000) ≈ 3.50 × Z(2000)/Z(7000) ≈ 3.50 × 1.14 ≈ 3.98
-        chk("GNB: \xcf\x81(7000)/\xcf\x81(2000) la 10\xc2\xb0""C",
-            rho[1][3] / rho[1][2], 3.50, 4.80, "monotonie P");
+        chk("GNB: \xcf\x81(7000)/\xcf\x81(2000) at 10\xc2\xb0""C",
+            rho[1][3] / rho[1][2], 3.50, 4.80, "monotone P");
       }
 
-      sec_box("Negative suplim.",
+      sec_box("Negative tests",
               "d<12.5 Dia-U; beta<0.23 Dia-U; D>760 Dia-F; D>500 Aj-ISA; d=50 Aj-V", 9);
-      // ── Teste negative ISO 5167: parametri invalizi trebuie sa returneze 0 ──
-      std::printf("  %s\xC2\xBB Teste negative ISO 5167%s\n", kBoldYellow, kReset);
+      // ── Negative ISO 5167 tests: invalid parameters must return 0 ──────────
+      std::printf("  %s\xC2\xBB ISO 5167 negative tests%s\n", kYellow, kReset);
       {
         BwrConst bt_n = make_bwr(xCH4);
         double rho_n  = CalcDensity(20.0, 500.0 / kKpaPerAtm, bt_n);
-        double eta_n  = 11.5e-6;  // viscozitate CH4 [Pa*s]
+        double eta_n  = 11.5e-6;  // CH4 viscosity [Pa*s]
         FlowResult fr_n;
-        // Suprima mesajele PrintError pe durata testelor negative
+        // Suppress PrintError messages during negative tests
         int saved_fd = _dup(1);
         FILE* nul_f  = nullptr;
         fopen_s(&nul_f, "NUL", "w");
         if (nul_f) { _dup2(_fileno(nul_f), 1); fclose(nul_f); }
-        double qn1 = CalcMassFlow(5.0,500.0,20.0, TipDispozitiv::kDiafragmaUnghi,
+        double qn1 = CalcMassFlow(5.0,500.0,20.0, DeviceType::kOrificeCorner,
                                   200.0,170.0, rho_n,eta_n, &fr_n);  // β=0.85>0.80
-        double qn2 = CalcMassFlow(5.0,500.0,20.0, TipDispozitiv::kDiafragmaUnghi,
+        double qn2 = CalcMassFlow(5.0,500.0,20.0, DeviceType::kOrificeCorner,
                                    30.0, 15.0, rho_n,eta_n, &fr_n);  // D=30<50mm
-        double qn3 = CalcMassFlow(5.0,500.0,20.0, TipDispozitiv::kVenturiPrelucrat,
+        double qn3 = CalcMassFlow(5.0,500.0,20.0, DeviceType::kVenturiMachined,
                                   200.0, 60.0, rho_n,eta_n, &fr_n);  // β=0.30<0.40
-        double qn4 = CalcMassFlow(5.0,500.0,20.0, TipDispozitiv::kVenturiTabla,
+        double qn4 = CalcMassFlow(5.0,500.0,20.0, DeviceType::kVenturiWeldedSheet,
                                   200.0,150.0, rho_n,eta_n, &fr_n);  // β=0.75>0.70
-        double qn5 = CalcMassFlow(5.0,500.0,20.0, TipDispozitiv::kDiafragmaUnghi,
+        double qn5 = CalcMassFlow(5.0,500.0,20.0, DeviceType::kOrificeCorner,
                                   200.0, 10.0, rho_n,eta_n, &fr_n);  // d=10<12.5mm
-        double qn6 = CalcMassFlow(5.0,500.0,20.0, TipDispozitiv::kDiafragmaUnghi,
+        double qn6 = CalcMassFlow(5.0,500.0,20.0, DeviceType::kOrificeCorner,
                                   200.0, 44.0, rho_n,eta_n, &fr_n);  // β=0.22<0.23
-        double qn7 = CalcMassFlow(5.0,500.0,20.0, TipDispozitiv::kDiafragmaFlansa,
+        double qn7 = CalcMassFlow(5.0,500.0,20.0, DeviceType::kOrificeFlange,
                                   800.0,400.0, rho_n,eta_n, &fr_n);  // D=800>760mm
-        double qn8 = CalcMassFlow(5.0,500.0,20.0, TipDispozitiv::kAjutajIsa,
+        double qn8 = CalcMassFlow(5.0,500.0,20.0, DeviceType::kNozzleIsa,
                                   550.0,220.0, rho_n,eta_n, &fr_n);  // D=550>500mm
-        double qn9 = CalcMassFlow(5.0,500.0,20.0, TipDispozitiv::kAjutajVenturi,
+        double qn9 = CalcMassFlow(5.0,500.0,20.0, DeviceType::kVenturiNozzle,
                                   200.0, 50.0, rho_n,eta_n, &fr_n);  // d=50<=50mm
         std::fflush(stdout);
         _dup2(saved_fd, 1);
@@ -1043,17 +1065,17 @@ int main() {
         chk("\xCE\xB2=0.22 Dia-U (min 0.23) \xE2\x86\x92 Qm=0",    qn6, -0.001, 0.001, ns);
         chk("D=800mm Dia-F (max 760mm) \xE2\x86\x92 Qm=0",          qn7, -0.001, 0.001, ns);
         chk("D=550mm Aj-ISA (max 500mm) \xE2\x86\x92 Qm=0",         qn8, -0.001, 0.001, ns);
-        chk("d=50mm Aj-V (limit\xC4\x83 d>50mm) \xE2\x86\x92 Qm=0",qn9, -0.001, 0.001, ns);
+        chk("d=50mm Aj-V (limit d>50mm) \xE2\x86\x92 Qm=0",      qn9, -0.001, 0.001, ns);
       }
 
-      sec_box("Monotonie eta vs T",
-              "eta(CH4) creste cu T: rapoarte -10C/20C/60C; sqrt(T) cinetic", 3);
-      // ── Monotonie vâscozitate față de temperatură (CH4) ──────────────────
-      // Gaze: η ∝ √T la diluat (teoria cinetică). CE include factorul (1+k·ln(T/cs))·√T.
+      sec_box("Monotone eta vs T",
+              "eta(CH4) increases with T: ratios -10C/20C/60C; sqrt(T) kinetic", 3);
+      // ── Viscosity monotonicity vs temperature (CH4) ───────────────────────
+      // Gases: η ∝ √T at dilute limit (kinetic theory). CE includes factor (1+k·ln(T/cs))·√T.
       // NIST CH4: η(-10°C)≈10.5 μPa·s; η(20°C)≈11.0; η(60°C)≈11.9 μPa·s.
       // √(333.15/263.15)≈1.126; √(293.15/263.15)≈1.055; √(333.15/293.15)≈1.065.
-      std::printf("  %s\xC2\xBB Monotonie v\xC3\xA2scozitate fa\xC8\x9B\xC4\x83 de T (CH4)%s\n",
-                  kBoldYellow, kReset);
+      std::printf("  %s\xC2\xBB Viscosity monotonicity vs T (CH4)%s\n",
+                  kYellow, kReset);
       {
         BwrConst bt_mt = make_bwr(xCH4);
         double tc_mt = 0.0, pc_mt = 0.0, zc_mt = 0.0;
@@ -1068,21 +1090,21 @@ int main() {
         double eN10 = calc_eta(-10.0, xCH4, bt_mt, roc_mt, csi_mt) * kPaToMicroPa;
         double eP20 = calc_eta( 20.0, xCH4, bt_mt, roc_mt, csi_mt) * kPaToMicroPa;
         double eP60 = calc_eta( 60.0, xCH4, bt_mt, roc_mt, csi_mt) * kPaToMicroPa;
-        chk("Monotonie \xCE\xB7 CH4: \xCE\xB7(60\xC2\xB0""C)/\xCE\xB7(-10\xC2\xB0""C) [-]",
-            eP60 / eN10, 1.05, 1.25, "CE/cinetic");
-        chk("Monotonie \xCE\xB7 CH4: \xCE\xB7(20\xC2\xB0""C)/\xCE\xB7(-10\xC2\xB0""C) [-]",
-            eP20 / eN10, 1.01, 1.10, "CE/cinetic");
-        chk("Monotonie \xCE\xB7 CH4: \xCE\xB7(60\xC2\xB0""C)/\xCE\xB7(20\xC2\xB0""C) [-]",
-            eP60 / eP20, 1.01, 1.12, "CE/cinetic");
+        chk("Monotone \xCE\xB7 CH4: \xCE\xB7(60\xC2\xB0""C)/\xCE\xB7(-10\xC2\xB0""C) [-]",
+            eP60 / eN10, 1.05, 1.25, "CE/kinetic");
+        chk("Monotone \xCE\xB7 CH4: \xCE\xB7(20\xC2\xB0""C)/\xCE\xB7(-10\xC2\xB0""C) [-]",
+            eP20 / eN10, 1.01, 1.10, "CE/kinetic");
+        chk("Monotone \xCE\xB7 CH4: \xCE\xB7(60\xC2\xB0""C)/\xCE\xB7(20\xC2\xB0""C) [-]",
+            eP60 / eP20, 1.01, 1.12, "CE/kinetic");
       }
 
-      sec_box("Ordonare eta gaze",
-              "eta(N2)/eta(CH4)~1.61; eta(CO2)/eta(CH4)~1.35 la 20C, 1 atm", 2);
-      // ── Ordonare vâscozitate între gaze la 20°C ──────────────────────────
-      // CE: η(CH4)≈11.5; η(CO2)≈15.5; η(N2)≈18.5 μPa·s la 20°C, 1 atm.
-      // Ar omis: eroare CE sistematică −19% față de NIST → ordinea Ar nu e garantată.
-      std::printf("  %s\xC2\xBB Ordonare v\xC3\xA2scozitate \xC3\xAEntre gaze la 20\xC2\xB0""C%s\n",
-                  kBoldYellow, kReset);
+      sec_box("Gas eta ordering",
+              "eta(N2)/eta(CH4)~1.61; eta(CO2)/eta(CH4)~1.35 at 20C, 1 atm", 2);
+      // ── Viscosity ordering between gases at 20°C ─────────────────────────
+      // CE: η(CH4)≈11.5; η(CO2)≈15.5; η(N2)≈18.5 μPa·s at 20°C, 1 atm.
+      // Ar omitted from relative ordering test (η_Ar ~ 22.4 μPa·s, close to N2 ~ 18.5 → ratio near 1).
+      std::printf("  %s\xC2\xBB Viscosity ordering between gases at 20\xC2\xB0""C%s\n",
+                  kYellow, kReset);
       {
         auto eta20 = [&](const double* xc) -> double {
           BwrConst bt = make_bwr(xc);
@@ -1098,39 +1120,39 @@ int main() {
         double eN2  = eta20(xN2);
         double eCO2 = eta20(xCO2);
         // η(N2)/η(CH4) ≈ 18.47/11.46 ≈ 1.61
-        chk("Ordonare: \xCE\xB7(N2)/\xCE\xB7(CH4) la 20\xC2\xB0""C [-]",
+        chk("Ordering: \xCE\xB7(N2)/\xCE\xB7(CH4) at 20\xC2\xB0""C [-]",
             eN2  / eCH4, 1.40, 1.80, "CE/NIST");
         // η(CO2)/η(CH4) ≈ 15.49/11.46 ≈ 1.35
-        chk("Ordonare: \xCE\xB7(CO2)/\xCE\xB7(CH4) la 20\xC2\xB0""C [-]",
+        chk("Ordering: \xCE\xB7(CO2)/\xCE\xB7(CH4) at 20\xC2\xB0""C [-]",
             eCO2 / eCH4, 1.20, 1.55, "CE/NIST");
       }
 
-      sec_box("Aer sintetic",
-              "79% N2+21% O2: rho(20C)~1.199 kg/m3; eta~18.2 muPa*s; Qm pt. 9 tipuri", 15);
-      // ── Aer sintetic (79% N2 + 21% O2) ──────────────────────────────────
-      // M_aer = 0.79×28.016 + 0.21×32.000 = 28.853 g/mol
+      sec_box("Synthetic air",
+              "79% N2+21% O2: rho(20C)~1.199 kg/m3; eta~18.2 muPa*s; Qm for 9 types", 15);
+      // ── Synthetic air (79% N2 + 21% O2) ──────────────────────────────────
+      // M_air = 0.79×28.016 + 0.21×32.000 = 28.853 g/mol
       // ρ_ideal(20°C)=28.853/24.055=1.199 kg/m³; ρ_ideal(0°C)=28.853/22.414=1.287
-      // η_NIST aer la 20°C ≈ 18.2 μPa·s; Z ≈ 1.000 la 1 atm (cvasi-ideal)
+      // η_NIST air at 20°C ≈ 18.2 μPa·s; Z ≈ 1.000 at 1 atm (quasi-ideal)
       {
         double xAer[kArraySize] = {};
         xAer[29] = 0.79;  // N2
         xAer[30] = 0.21;  // O2
-        test_comp("Aer sintetic (79% N2 + 21% O2)", xAer,
+        test_comp("Synthetic air (79% N2 + 21% O2)", xAer,
                   1.182, 1.218,   // \xcf\x81(20\xc2\xb0C, 1 atm): ideal=1.199, Z\xe2\x89\x881.00
                   1.270, 1.305,   // \xcf\x81(0\xc2\xb0C,  1 atm): ideal=1.287, Z\xe2\x89\x881.00
-                  15.5,  22.0,    // \xce\xb7(20\xc2\xb0C): NIST aer\xe2\x89\x8818.2 \xc2\xb5Pa\xc2\xb7s
+                  15.5,  22.0,    // \xce\xb7(20\xc2\xb0C): NIST air\xe2\x89\x8818.2 \xc2\xb5Pa\xc2\xb7s
                   200, 80, 500, 5, false);
       }
 
-      sec_box("H2S densitate",
-              "H2S pur (Tc=373.6K, Tr=0.785): rho la 1 atm si 500 kPa, consistenta N2", 3);
-      // ── H2S: densitate non-ideală și consistență ──────────────────────────
-      // H2S: Tc=373.6 K, Pc=88.9 atm; la 20°C → Tr=0.785 → puternic non-ideal.
+      sec_box("H2S density",
+              "Pure H2S (Tc=373.6K, Tr=0.785): rho at 1 atm and 500 kPa, N2 consistency", 3);
+      // ── H2S: non-ideal density and consistency ────────────────────────────
+      // H2S: Tc=373.6 K, Pc=88.9 atm; at 20°C → Tr=0.785 → strongly non-ideal.
       // ρ_ideal(1 atm)=34.082/24.055=1.417 kg/m³; Z≈0.993 → ρ≈1.427
       // ρ_ideal(500 kPa)=4.935×1.417=6.99 kg/m³; Z≈0.965 → ρ≈7.24
       // M(H2S)/M(N2)=1.217; Z(H2S)<Z(N2) → ρ(H2S)/ρ(N2)>1.217
-      std::printf("  %s\xC2\xBB H2S: densitate non-ideal\xC4\x83 \xC8\x99i consisten\xC8\x9B\xC4\x83%s\n",
-                  kBoldYellow, kReset);
+      std::printf("  %s\xC2\xBB H2S: non-ideal density and consistency%s\n",
+                  kYellow, kReset);
       {
         double xH2S[kArraySize] = {};  xH2S[26] = 1.0;
         BwrConst bH2S   = make_bwr(xH2S);
@@ -1138,29 +1160,29 @@ int main() {
         double rH2S_1   = CalcDensity(20.0, 1.0,                  bH2S);
         double rH2S_500 = CalcDensity(20.0, 500.0 / kKpaPerAtm,   bH2S);
         double rN2_500  = CalcDensity(20.0, 500.0 / kKpaPerAtm,   bN2_hs);
-        chk("Densitate H2S 20\xC2\xB0""C, 101.325 kPa [kg/m\xC2\xB3]",
+        chk("Density H2S 20\xC2\xB0""C, 101.325 kPa [kg/m\xC2\xB3]",
             rH2S_1,   1.38, 1.48, "BWRS/ideal");
-        chk("Densitate H2S 20\xC2\xB0""C,  500 kPa   [kg/m\xC2\xB3]",
+        chk("Density H2S 20\xC2\xB0""C,  500 kPa   [kg/m\xC2\xB3]",
             rH2S_500, 6.80, 7.80, "BWRS/NIST");
-        // Raport > M ratio (1.217) din cauza non-idealității mai mari a H2S
-        chk("Consisten\xC8\x9B\xC4\x83: \xCF\x81(H2S)/\xCF\x81(N2) la 500 kPa [-]",
+        // Ratio > M ratio (1.217) due to greater non-ideality of H2S
+        chk("Consistency: \xCF\x81(H2S)/\xCF\x81(N2) at 500 kPa [-]",
             rH2S_500 / rN2_500, 1.20, 1.45, "M + Z");
       }
 
-      // ── Sumar ────────────────────────────────────────────────────────────
-      std::printf("\n  %sRezultat global: %d/%d teste trecute.%s\n",
+      // ── Summary ───────────────────────────────────────────────────────────
+      std::printf("\n  %sOverall result: %d/%d tests passed.%s\n",
                   (npass == ntotal) ? kBoldGreen : kBoldRed,
                   npass, ntotal, kReset);
       if (npass < ntotal)
-        std::printf("  %sATEN\xC8\x9AIE: Unele teste au e\xC8\x99uat \xe2\x80\x94 verifica\xC8\x9Bi implementarea!%s\n",
+        std::printf("  %sWARNING: Some tests failed \xe2\x80\x94 check the implementation!%s\n",
                     kBoldRed, kReset);
-      std::printf("\n  %sAp\xC4\x83sa\xC8\x9Bi orice tast\xC4\x83 pentru a continua...%s", kBoldWhite, kReset);
+      std::printf("\n  %sPress any key to continue...%s", kBoldWhite, kReset);
       _getch();
       std::printf("\n");
     }
   }
 
-  // ── Compoziție: încărcare din fișier sau introducere manuală ──────────────
+  // ── Composition: load from file or enter manually ─────────────────────────
   bool comp_loaded = false;
   {
     int    tmp_tip = 0;
@@ -1171,14 +1193,22 @@ int main() {
     fopen_s(&cf, kCompFile, "r");
     if (cf) {
       std::fclose(cf);
-      std::printf("%s\n  Există o compoziție salvată. O refolosiți? [d/n] %s>%s ",
+      std::printf("%s\n  A saved composition exists. Reuse it? [y/n] %s>%s ",
                   kBoldWhite, kCyan, kReset);
       if (AskYesNo()) {
         if (LoadComposition(x)) {
-          comp_loaded = true;
-          PrintComposition(x);
+          double loaded_sum = 0.0;
+          for (int i = 1; i <= kNumComponents; i++) loaded_sum += x[i];
+          if (std::fabs(loaded_sum - 1.0) > kSumTolerance) {
+            std::printf("%s  Loaded composition: sum = %.6f \xe2\x89\xa0 1 "
+                        "— switching to manual entry.%s\n", kBoldRed, loaded_sum, kReset);
+            for (int i = 1; i <= kNumComponents; i++) x[i] = 0.0;
+          } else {
+            comp_loaded = true;
+            PrintComposition(x);
+          }
         } else {
-          std::printf("%s  Eroare la citirea fișierului. Se va introduce manual.%s\n",
+          std::printf("%s  Error reading file. Switching to manual entry.%s\n",
                       kBoldRed, kReset);
         }
       }
@@ -1188,9 +1218,9 @@ int main() {
   if (!comp_loaded) {
     double sum = 0.0;
     do {
-      std::printf("\n%s  ── Compoziție %s\n",
-                  kBoldYellow, kReset);
-      std::printf("%s  Fracții molare ale amestecului de gaze:%s\n\n", kBoldWhite, kReset);
+      std::printf("\n%s  ── Composition %s\n",
+                  kYellow, kReset);
+      std::printf("%s  Molar fractions of the gas mixture:%s\n\n", kBoldWhite, kReset);
       for (int i = 1; i <= kNumComponents; i++) {
         const char* name = kCompNames[i];
         int vlen = (int)std::strlen(name) - Utf8ExtraBytes(name);
@@ -1204,7 +1234,7 @@ int main() {
           ReadDouble(&v);
           std::printf("%s", kReset);
           if (v < 0.0 || v > 1.0) {
-            std::printf("%s  Valoare invalidă — trebuie să fie în [0, 1].%s\n", kBoldRed, kReset);
+            std::printf("%s  Invalid value \xe2\x80\x94 must be in [0, 1].%s\n", kBoldRed, kReset);
           }
         } while (v < 0.0 || v > 1.0);
         x[i] = v;
@@ -1216,17 +1246,17 @@ int main() {
       }
 
       if (std::fabs(sum - 1.0) > kSumTolerance) {
-        std::printf("%s\n  Suma fracțiilor molare = %.6f  ≠  1.%s\n", kBoldRed, sum, kReset);
+        std::printf("%s\n  Sum of molar fractions = %.6f  \xe2\x89\xa0  1.%s\n", kBoldRed, sum, kReset);
         if (sum < 1e-10) {
-          std::printf("%s  Suma este zero — reintroduceți compoziția.%s\n", kBoldRed, kReset);
+          std::printf("%s  Sum is zero \xe2\x80\x94 re-enter the composition.%s\n", kBoldRed, kReset);
         } else {
-          std::printf("%s  Normalizați automat? [d/n] (n = reintroduceți) %s>%s ", kYellow, kCyan, kReset);
+          std::printf("%s  Normalise automatically? [y/n] (n = re-enter) %s>%s ", kYellow, kCyan, kReset);
           if (AskYesNo()) {
             for (int i = 1; i <= kNumComponents; i++) {
               x[i] /= sum;
             }
             sum = 1.0;
-            std::printf("%s  Fracții normalizate (componente nenule):%s\n\n", kBoldGreen, kReset);
+            std::printf("%s  Normalised fractions (non-zero components):%s\n\n", kBoldGreen, kReset);
             for (int i = 1; i <= kNumComponents; i++) {
               if (x[i] > 0.0) {
                 const char* name = kCompNames[i];
@@ -1243,13 +1273,13 @@ int main() {
       }
     } while (std::fabs(sum - 1.0) > kSumTolerance);
 
-    std::printf("%s\n  Salvați compoziția? [d/n] %s>%s ", kBoldWhite, kCyan, kReset);
+    std::printf("%s\n  Save composition? [y/n] %s>%s ", kBoldWhite, kCyan, kReset);
     if (AskYesNo()) {
       SaveComposition(x);
     }
   }
 
-  // ── Calcul constante BWRS ale amestecului ─────────────────────────────────
+  // ── Compute BWRS mixture constants ────────────────────────────────────────
   using Clock = std::chrono::high_resolution_clock;
   using Us    = std::chrono::duration<double, std::micro>;
 
@@ -1316,34 +1346,34 @@ int main() {
                  / std::sqrt(bwr.molar_mass)
                  / std::cbrt(pcam * pcam);
 
-  std::printf("\n%s  Masa molar\xC4\x83 a amestecului: %s %s%8.4f%s [g/mol]\n",
+  std::printf("\n%s  Mixture molar mass              : %s %s%8.4f%s [g/mol]\n",
               kBoldWhite, kReset, kBoldGreen, bwr.molar_mass, kReset);
-  std::printf("%s  Densitate relativ\xC4\x83 fa\xC8\x9B\xC4\x83 de aer      :%s %s%8.4f%s [-]\n",
+  std::printf("%s  Relative density (vs. air)      :%s %s%8.4f%s [-]\n",
               kBoldWhite, kReset, kBoldGreen, bwr.molar_mass / 28.962, kReset);
 
   static const CountryRef kRefTable[] = {
-    {"Rom\xC3\xA2nia / UE  (DIN 1343)",  2, { 0.0,  15.0  }, {"Nm\xC2\xB3/h", "Sm\xC2\xB3/h"}},
-    {"ISO 13443  /  UK / Italia",         1, {15.0,   0.0  }, {"Sm\xC2\xB3/h", ""}},
-    {"SUA \xe2\x80\x94 AGA-3  (60\xC2\xB0""F)", 1, {15.56, 0.0}, {"Sm\xC2\xB3/h", ""}},
-    {"Rusia \xe2\x80\x94 GOST 30319-1",  1, {20.0,   0.0  }, {"m\xC2\xB3/h",  ""}},
-    {"Personalizat",                      1, { 0.0,   0.0  }, {"m\xC2\xB3/h",  ""}},
+    {"Romania / EU  (DIN 1343)",          2, { 0.0,  15.0  }, {"Nm\xC2\xB3/h", "Sm\xC2\xB3/h"}},
+    {"ISO 13443  /  UK / Italy",          1, {15.0,   0.0  }, {"Sm\xC2\xB3/h", ""}},
+    {"USA \xe2\x80\x94 AGA-3  (60\xC2\xB0""F)",      1, {15.56, 0.0}, {"Sm\xC2\xB3/h", ""}},
+    {"Russia \xe2\x80\x94 GOST 30319-1",  1, {20.0,   0.0  }, {"m\xC2\xB3/h",  ""}},
+    {"Custom",                            1, { 0.0,   0.0  }, {"m\xC2\xB3/h",  ""}},
   };
   static constexpr int kNRef = 5;
 
-  std::printf("\n%s  ── Condi\xC8\x9Bii de referin\xC8\x9B\xC4\x83 %s\n",
-              kBoldYellow, kReset);
-  std::printf("%s  1.  Rom\xC3\xA2nia / UE  (DIN 1343)        \xe2\x80\x94   0\xC2\xB0""C \xC8\x99i 15\xC2\xB0""C / 101.325 kPa  [Nm\xC2\xB3/h] \xC8\x99i [Sm\xC2\xB3/h]%s\n", kBoldWhite, kReset);
-  std::printf("%s  2.  ISO 13443  /  UK / Italia       \xe2\x80\x94  15\xC2\xB0""C / 101.325 kPa  [Sm\xC2\xB3/h]%s\n", kBoldWhite, kReset);
-  std::printf("%s  3.  SUA \xe2\x80\x94 AGA-3  (60\xC2\xB0""F)             \xe2\x80\x94  15.56\xC2\xB0""C / 101.325 kPa  [Sm\xC2\xB3/h]%s\n", kBoldWhite, kReset);
-  std::printf("%s  4.  Rusia \xe2\x80\x94 GOST 30319-1            \xe2\x80\x94  20\xC2\xB0""C / 101.325 kPa  [m\xC2\xB3/h]%s\n", kBoldWhite, kReset);
-  std::printf("%s  5.  Personalizat                    \xe2\x80\x94  T [\xC2\xB0""C] introdus manual  [m\xC2\xB3/h]%s\n",  kBoldWhite, kReset);
+  std::printf("\n%s  ── Reference conditions %s\n",
+              kYellow, kReset);
+  std::printf("%s  1.  Romania / EU  (DIN 1343)        \xe2\x80\x94   0\xC2\xB0""C and 15\xC2\xB0""C / 101.325 kPa  [Nm\xC2\xB3/h] and [Sm\xC2\xB3/h]%s\n", kBoldWhite, kReset);
+  std::printf("%s  2.  ISO 13443  /  UK / Italy        \xe2\x80\x94  15\xC2\xB0""C / 101.325 kPa  [Sm\xC2\xB3/h]%s\n", kBoldWhite, kReset);
+  std::printf("%s  3.  USA \xe2\x80\x94 AGA-3  (60\xC2\xB0""F)             \xe2\x80\x94  15.56\xC2\xB0""C / 101.325 kPa  [Sm\xC2\xB3/h]%s\n", kBoldWhite, kReset);
+  std::printf("%s  4.  Russia \xe2\x80\x94 GOST 30319-1           \xe2\x80\x94  20\xC2\xB0""C / 101.325 kPa  [m\xC2\xB3/h]%s\n", kBoldWhite, kReset);
+  std::printf("%s  5.  Custom                          \xe2\x80\x94  T [\xC2\xB0""C] entered manually  [m\xC2\xB3/h]%s\n",  kBoldWhite, kReset);
 
-  std::printf("\n  %s>%s %sSelecta\xC8\x9Bi (1\xe2\x80\x93" "5) : %s", kCyan, kReset, kBoldWhite, kReset);
+  std::printf("\n  %s>%s %sSelect (1\xe2\x80\x93" "5) : %s", kCyan, kReset, kBoldWhite, kReset);
   int ref_sel = ReadChoice(1, kNRef);
 
   CountryRef ref = kRefTable[ref_sel - 1];
   if (ref_sel == kNRef) {
-    std::printf("  %s>%s %sTemperatura de referin\xC8\x9B\xC4\x83 [\xC2\xB0""C] : %s", kCyan, kReset, kBoldWhite, kReset);
+    std::printf("  %s>%s %sReference temperature [\xC2\xB0""C] : %s", kCyan, kReset, kBoldWhite, kReset);
     ReadDouble(&ref.t[0]);
   }
 
@@ -1352,16 +1382,16 @@ int main() {
   double ror_ref[2] = {};
   for (int i = 0; i < ref.n; i++) {
     ror_ref[i] = CalcDensity(ref.t[i], 1, bwr);
-    std::printf("%s  Densitate referin\xC8\x9B\xC4\x83 %5.2f\xC2\xB0""C / 101.325 kPa :%s %s%8.4f%s kg/m\xC2\xB3\n",
+    std::printf("%s  Reference density   %5.2f\xC2\xB0""C / 101.325 kPa :%s %s%8.4f%s kg/m\xC2\xB3\n",
                 kBoldWhite, ref.t[i], kReset, kBoldGreen, ror_ref[i], kReset);
     double z_ref = bwr.molar_mass / (ror_ref[i] * kGasConstantR * (ref.t[i] + kKelvinOffset));
-    std::printf("%s  Factor Z            %5.2f\xC2\xB0""C / 101.325 kPa :%s %s%8.6f%s \xe2\x80\x94\n",
+    std::printf("%s  Z factor            %5.2f\xC2\xB0""C / 101.325 kPa :%s %s%8.6f%s \xe2\x80\x94\n",
                 kBoldWhite, ref.t[i], kReset, kBoldGreen, z_ref, kReset);
   }
 
   // ── Output helpers ─────────────────────────────────────────────────────────
   auto sep_d = []() {
-    std::printf("%s  ", kBoldYellow);
+    std::printf("%s  ", kYellow);
     for (int k = 0; k < 76; k++) std::fputs("\xe2\x95\x90", stdout);
     std::printf("%s\n", kReset);
   };
@@ -1379,26 +1409,26 @@ int main() {
     std::printf("%s %s\n", kReset, unit);
   };
 
-  // ── Buclă exterioară: selecția dispozitivului de măsurare ─────────────────
+  // ── Outer loop: select measurement device ─────────────────────────────────
   for (;;) {
     int    tip_raw = 0;
     double d_int = 0.0, d_orif = 0.0;
 
-    // Încearcă să refolosească configurația salvată
+    // Try to reuse saved configuration
     {
       int   sv_tip; double sv_d_int, sv_d_orif;
       if (LoadConfig(&sv_tip, &sv_d_int, &sv_d_orif)
           && sv_tip >= kTipMin && sv_tip <= kTipMax) {
         std::printf(
-            "\n%s  ── Configurație salvată%s\n"
-            "%s  Dispozitiv  : %s%s\n"
-            "%s  D intern    : %s%g mm%s\n"
-            "%s  D orificiu  : %s%g mm%s\n",
-            kBoldYellow, kReset,
-            kBoldWhite, TipName(static_cast<TipDispozitiv>(sv_tip)), kReset,
+            "\n%s  ── Saved configuration%s\n"
+            "%s  Device      : %s%s\n"
+            "%s  Pipe D      : %s%g mm%s\n"
+            "%s  Orifice D   : %s%g mm%s\n",
+            kYellow, kReset,
+            kBoldWhite, TipName(static_cast<DeviceType>(sv_tip)), kReset,
             kBoldWhite, kBoldGreen, sv_d_int, kReset,
             kBoldWhite, kBoldGreen, sv_d_orif, kReset);
-        std::printf("  %s>%s %sRefolosiți configurația? [d/n] : %s", kCyan, kReset, kBoldWhite, kReset);
+        std::printf("  %s>%s %sReuse this configuration? [y/n] : %s", kCyan, kReset, kBoldWhite, kReset);
         if (AskYesNo()) {
           tip_raw = sv_tip;
           d_int   = sv_d_int;
@@ -1408,102 +1438,127 @@ int main() {
       }
     }
 
-    // Selectare manuală dispozitiv
-    std::printf("\n%s  ── Dispozitiv de strangulare%s\n",
-                kBoldYellow, kReset);
+    // Manual device selection
+    select_device_type:
+    std::printf("\n%s  ── Throttling device%s\n",
+                kYellow, kReset);
     std::printf("%s%s", kBoldWhite, kTipDisp);
     std::printf("%s", kReset);
     tip_raw = ReadChoice(kTipMin, kTipMax);
 
+    select_D:
+    d_int = 0.0;
     std::printf("\n");
-    do {
-      std::printf("  %s>%s %sD intern  (20\xC2\xB0""C)  [mm] : %s", kCyan, kReset, kBoldWhite, kReset);
-      ReadDouble(&d_int);
+    for (;;) {
+      std::printf("  %s>%s %sPipe D    (20\xC2\xB0""C) [mm]%s"
+                  "  [\xe2\x86\x90 reselect device]%s : %s",
+                  kCyan, kReset, kBoldWhite, kYellow, kBoldWhite, kReset);
+      if (!ReadDouble(&d_int)) { std::printf("%s", kReset); d_int = 0.0; goto select_device_type; }
       std::printf("%s", kReset);
-      if (d_int <= 0.0) {
-        std::printf("%s  Valoare invalid\xC4\x83 \xe2\x80\x94 trebuie s\xC4\x83 fie pozitiv\xC4\x83.%s\n",
-                    kBoldRed, kReset);
-      }
-    } while (d_int <= 0.0);
-    do {
-      std::printf("  %s>%s %sD orificiu (20\xC2\xB0""C) [mm] : %s", kCyan, kReset, kBoldWhite, kReset);
-      ReadDouble(&d_orif);
+      if (d_int > 0.0) break;
+      std::printf("%s  Invalid value \xe2\x80\x94 must be positive.%s\n",
+                  kBoldRed, kReset);
+    }
+
+    select_d:
+    d_orif = 0.0;
+    for (;;) {
+      std::printf("  %s>%s %sOrifice D (20\xC2\xB0""C) [mm]%s"
+                  "  [\xe2\x86\x90 reenter pipe D]%s : %s",
+                  kCyan, kReset, kBoldWhite, kYellow, kBoldWhite, kReset);
+      if (!ReadDouble(&d_orif)) { std::printf("%s", kReset); d_orif = 0.0; goto select_D; }
       std::printf("%s", kReset);
       if (d_orif <= 0.0) {
-        std::printf("%s  Valoare invalid\xC4\x83 \xe2\x80\x94 trebuie s\xC4\x83 fie pozitiv\xC4\x83.%s\n",
+        std::printf("%s  Invalid value \xe2\x80\x94 must be positive.%s\n",
                     kBoldRed, kReset);
       } else if (d_orif >= d_int) {
-        std::printf("%s  D orificiu trebuie s\xC4\x83 fie mai mic dec\xC3\xA2t D intern (%g mm).%s\n",
+        std::printf("%s  Orifice D must be less than pipe D (%g mm).%s\n",
                     kBoldRed, d_int, kReset);
       } else {
         double beta_chk = d_orif / d_int;
         if (beta_chk < 0.10 || beta_chk > 0.80) {
-          std::printf("%s  \xCE\xB2 = %.4f \xe2\x80\x94 \xC3\xAEn afara domeniului ISO 5167 [0.10, 0.80].%s\n",
+          std::printf("%s  \xCE\xB2 = %.4f \xe2\x80\x94 outside ISO 5167 range [0.10, 0.80].%s\n",
                       kBoldRed, beta_chk, kReset);
+        } else {
+          break;
         }
       }
-    } while (d_orif <= 0.0 || d_orif >= d_int
-             || d_orif / d_int < 0.10 || d_orif / d_int > 0.80);
+    }
 
-    std::printf("%s\n  Salvați configurația? [d/n] %s>%s ", kBoldWhite, kCyan, kReset);
+    std::printf("%s\n  Save configuration? [y/n] %s>%s ", kBoldWhite, kCyan, kReset);
     if (AskYesNo()) {
       SaveConfig(tip_raw, d_int, d_orif);
     }
 
     run_inner:;
-    TipDispozitiv tip = static_cast<TipDispozitiv>(tip_raw);
+    DeviceType tip = static_cast<DeviceType>(tip_raw);
 
-    // Buclă interioară: calcul pentru condiții diferite T/P cu același dispozitiv
+    // Inner loop: calculate for different T/p conditions with the same device
     for (;;) {
-      double temperatura, presiunea, presiunea_dif;
-      do {
-        std::printf("\n\n%s  ── Condi\xC8\x9Bii de m\xC4\x83surare%s\n",
-                    kBoldYellow, kReset);
-        std::printf("  %s>%s %sTemperatura         [\xC2\xB0""C] : %s", kCyan, kReset, kBoldWhite, kReset);
-        ReadDouble(&temperatura);
-        std::printf("%s", kReset);
-        if (temperatura <= -273.15)
-          std::printf("%s  Temperatura sub zero absolut (-273.15\xC2\xB0""C).%s\n",
-                      kBoldRed, kReset);
-      } while (temperatura <= -273.15);
-      do {
-        std::printf("  %s>%s %sPresiunea           [kPa] : %s", kCyan, kReset, kBoldWhite, kReset);
-        ReadDouble(&presiunea);
-        std::printf("%s", kReset);
-        if (presiunea <= 0.0)
-          std::printf("%s  Presiunea trebuie s\xC4\x83 fie pozitiv\xC4\x83.%s\n",
-                      kBoldRed, kReset);
-      } while (presiunea <= 0.0);
-      do {
-        std::printf("  %s>%s %sPresiunea diferen\xC8\x9Bial\xC4\x83 [kPa] : %s", kCyan, kReset, kBoldWhite, kReset);
-        ReadDouble(&presiunea_dif);
-        std::printf("%s", kReset);
-        if (presiunea_dif <= 0.0)
-          std::printf("%s  Presiunea diferen\xC8\x9Bial\xC4\x83 trebuie s\xC4\x83 fie pozitiv\xC4\x83.%s\n",
-                      kBoldRed, kReset);
-        else if (presiunea_dif >= presiunea)
-          std::printf("%s  Diferen\xC8\x9Bial\xC4\x83 trebuie s\xC4\x83 fie mai mic\xC4\x83 dec\xC3\xA2t p = %g kPa.%s\n",
-                      kBoldRed, presiunea, kReset);
-      } while (presiunea_dif <= 0.0 || presiunea_dif >= presiunea);
+      double temperature = 0.0, pressure = 0.0, pressure_diff = 0.0;
+
+      reenter_T:
+      std::printf("\n\n%s  ── Measurement conditions%s\n",
+                  kYellow, kReset);
+      std::printf("  %s>%s %sTemperature         [\xC2\xB0""C]%s"
+                  "  [\xe2\x86\x90 change device]%s : %s",
+                  kCyan, kReset, kBoldWhite, kYellow, kBoldWhite, kReset);
+      if (!ReadDouble(&temperature)) { std::printf("%s", kReset); break; }
+      std::printf("%s", kReset);
+      if (temperature <= -273.15) {
+        std::printf("%s  Temperature below absolute zero (-273.15\xC2\xB0""C).%s\n",
+                    kBoldRed, kReset);
+        goto reenter_T;
+      }
+
+      reenter_P:
+      std::printf("  %s>%s %sPressure            [kPa]%s"
+                  "  [\xe2\x86\x90 reenter T]%s : %s",
+                  kCyan, kReset, kBoldWhite, kYellow, kBoldWhite, kReset);
+      if (!ReadDouble(&pressure)) { std::printf("%s", kReset); goto reenter_T; }
+      std::printf("%s", kReset);
+      if (pressure <= 0.0) {
+        std::printf("%s  Pressure must be positive.%s\n",
+                    kBoldRed, kReset);
+        goto reenter_P;
+      }
+
+      reenter_dP:
+      std::printf("  %s>%s %sDifferential pressure [kPa]%s"
+                  "  [\xe2\x86\x90 reenter P]%s : %s",
+                  kCyan, kReset, kBoldWhite, kYellow, kBoldWhite, kReset);
+      if (!ReadDouble(&pressure_diff)) { std::printf("%s", kReset); goto reenter_P; }
+      std::printf("%s", kReset);
+      if (pressure_diff <= 0.0) {
+        std::printf("%s  Differential pressure must be positive.%s\n",
+                    kBoldRed, kReset);
+        goto reenter_dP;
+      } else if (pressure_diff >= pressure) {
+        std::printf("%s  Differential must be less than p = %g kPa.%s\n",
+                    kBoldRed, pressure, kReset);
+        goto reenter_dP;
+      }
       std::printf("  %c", 7);
 
       // ─── Calcul ────────────────────────────────────────────────────────────
       int    iter_rho = 0, iter_qm = 0;
       auto   t_rho0 = Clock::now();
-      double ro = CalcDensity(temperatura, presiunea / kKpaPerAtm, bwr, &iter_rho);
+      double ro = CalcDensity(temperature, pressure / kKpaPerAtm, bwr, &iter_rho);
       double t_rho_us = Us(Clock::now() - t_rho0).count();
       if (!std::isfinite(ro) || ro <= 0.0) {
-        PrintError(ErrorCode::kNumeric, 0);
-        break;  // eroare -> reselect dispozitiv / conditii
+        std::printf("%s\n  BWRS density did not converge (T=%.1f\xc2\xb0""C, P=%.1f kPa)"
+                    " \xe2\x80\x94 check that conditions are in the gas-phase region.%s\n",
+                    kBoldRed, temperature, pressure, kReset);
+        break;
       }
 
       double roc_red = ro / roc_crit;
       auto   t_eta0 = Clock::now();
       double eta = 0.0;
       for (int i = 1; i <= kNumComponents; i++) {
-        eta += (1 + kChapEnskog * std::log((temperatura + kKelvinOffset) / cs[i]))
+        eta += (1 + kChapEnskog * std::log((temperature + kKelvinOffset) / cs[i]))
              / (1 + kChapEnskog * std::log(kKelvinOffset / cs[i]))
-             * std::sqrt((temperatura + kKelvinOffset) / kKelvinOffset)
+             * std::sqrt((temperature + kKelvinOffset) / kKelvinOffset)
              * et[i] * x[i] * std::sqrt(m[i]);
       }
       eta  = eta / mx;
@@ -1514,69 +1569,80 @@ int main() {
 
       FlowResult flow;
       auto   t_qm0 = Clock::now();
-      double qm = CalcMassFlow(presiunea_dif, presiunea, temperatura,
+      double qm = CalcMassFlow(pressure_diff, pressure, temperature,
                        tip, d_int, d_orif, ro, eta, &flow, kappa_mix, &iter_qm);
       double t_qm_us = Us(Clock::now() - t_qm0).count();
-      if (qm == 0.0) break;  // eroare -> reselect dispozitiv
+      if (qm == 0.0) break;  // error -> reselect device
 
-      // ─── Afișare rezultate ─────────────────────────────────────────────────
+      // ─── Display results ───────────────────────────────────────────────────
       std::printf("\n");
       sep_d();
-      std::printf("%s  REZULTATE  \xe2\x80\x94  %s%s\n",
-                  kBoldYellow, TipName(tip), kReset);
+      std::printf("%s  RESULTS  \xe2\x80\x94  %s%s\n",
+                  kYellow, TipName(tip), kReset);
       std::printf("%s  D = %.2f mm  \xc2\xb7  d = %.2f mm  \xc2\xb7  "
                   "\xce\xb2 = %.4f%s\n",
                   kBoldWhite, d_int, d_orif, flow.beta, kReset);
       std::printf("%s  D(t) = %.3f mm  \xc2\xb7  d(t) = %.3f mm  "
                   "\xc2\xb7  t = %.1f\xc2\xb0""C%s\n",
-                  kBoldWhite, flow.D_lucru_mm, flow.d_lucru_mm, temperatura, kReset);
+                  kBoldWhite, flow.D_working_mm, flow.d_working_mm, temperature, kReset);
+      {
+        double dt_ref   = temperature - kRefTempCelsius;
+        double corr_D   = kThermalExpPipe    * dt_ref * 100.0;
+        double corr_d   = kThermalExpOrifice * dt_ref * 100.0;
+        if (std::fabs(corr_D) > 0.10 || std::fabs(corr_d) > 0.10) {
+          std::printf("%s  Note: thermal expansion at %.0f\xc2\xb0""C: "
+                      "\xce\x94""D = %+.3f%%,  \xce\x94""d = %+.3f%%"
+                      " \xe2\x80\x94 verify dimensions are at 20\xc2\xb0""C reference.%s\n",
+                      kYellow, temperature, corr_D, corr_d, kReset);
+        }
+      }
       sep_d();
 
-      std::printf("\n%s  Condi\xc8\x9bii de m\xc4\x83surare%s\n", kCyan, kReset);
+      std::printf("\n%s  Measurement conditions%s\n", kCyan, kReset);
       sep_s();
-      row("Temperatur\xc4\x83", "%10.2f", temperatura, "\xc2\xb0""C");
-      row("Presiune absolut\xc4\x83", "%10.2f", presiunea, "kPa");
-      row("Presiune diferen\xc8\x9bial\xc4\x83", "%10.2f", presiunea_dif, "kPa");
+      row("Temperature", "%10.2f", temperature, "\xc2\xb0""C");
+      row("Absolute pressure", "%10.2f", pressure, "kPa");
+      row("Differential pressure", "%10.2f", pressure_diff, "kPa");
 
-      double Z_tp = (presiunea / kKpaPerAtm) * bwr.molar_mass
-                  / (ro * kGasConstantR * (temperatura + kKelvinOffset));
+      double Z_tp = (pressure / kKpaPerAtm) * bwr.molar_mass
+                  / (ro * kGasConstantR * (temperature + kKelvinOffset));
 
-      std::printf("\n%s  Fluid  (la t, p)%s\n", kCyan, kReset);
+      std::printf("\n%s  Fluid  (at t, p)%s\n", kCyan, kReset);
       sep_s();
-      row("Densitate \xcf\x81(t,p)", "%10.4f", ro, "kg/m\xc2\xb3");
-      row("V\xc3\xa2scozitate dinamic\xc4\x83 \xce\xb7(t,p)", "%10.4f",
+      row("Density \xcf\x81(t,p)", "%10.4f", ro, "kg/m\xc2\xb3");
+      row("Dynamic viscosity \xce\xb7(t,p)", "%10.4f",
           eta * kPaToMicroPa, "\xc2\xb5Pa\xc2\xb7s");
-      row("Factor compresibilitate Z(t,p)", "%10.6f", Z_tp, "\xe2\x80\x94");
+      row("Compressibility factor Z(t,p)", "%10.6f", Z_tp, "\xe2\x80\x94");
 
-      std::printf("\n%s  Debite%s\n", kCyan, kReset);
+      std::printf("\n%s  Flow rates%s\n", kCyan, kReset);
       sep_s();
-      row("Masic Qm", "%10.4f", qm, "kg/s");
-      row("Masic Qm", "%10.2f", qm * kSecondsPerHour, "kg/h");
+      row("Mass flow Qm", "%10.4f", qm, "kg/s");
+      row("Mass flow Qm", "%10.2f", qm * kSecondsPerHour, "kg/h");
       for (int i = 0; i < ref.n; i++) {
         double qhref = kSecondsPerHour / ror_ref[i] * qm;
         char lbl[64];
         std::snprintf(lbl, sizeof(lbl),
-                      "Volumic %5.2f\xc2\xb0""C / 101.325 kPa", ref.t[i]);
+                      "Volumetric %5.2f\xc2\xb0""C / 101.325 kPa", ref.t[i]);
         row(lbl, "%10.2f", qhref, ref.label[i]);
       }
-      row("Volumic la (t,p)", "%10.2f", kSecondsPerHour / ro * qm, "m\xc2\xb3/h");
+      row("Volumetric at (t,p)", "%10.2f", kSecondsPerHour / ro * qm, "m\xc2\xb3/h");
 
-      std::printf("\n%s  Hidraulic\xc4\x83%s\n", kCyan, kReset);
+      std::printf("\n%s  Hydraulics%s\n", kCyan, kReset);
       sep_s();
-      row("Viteza medie v", "%10.2f", flow.viteza, "m/s");
-      row("Pierdere presiune", "%10.2f", flow.pierderea, "kPa");
-      row("Raport str\xc3\xa2ngulare \xce\xb2", "%10.4f", flow.beta, "\xe2\x80\x94");
-      row("Num\xc4\x83r Reynolds Re", "%10.4g", flow.reynolds, "\xe2\x80\x94");
-      row("Coeficient debit C", "%10.6f", flow.coef_c, "\xe2\x80\x94");
-      row("Factor expansibilitate \xce\xb5", "%10.6f", flow.epsilon, "\xe2\x80\x94");
-      row("Exponent izentropic k", "%10.4f", flow.kappa, "\xe2\x80\x94");
+      row("Mean velocity v", "%10.2f", flow.velocity, "m/s");
+      row("Pressure loss", "%10.2f", flow.pressure_loss, "kPa");
+      row("Throttle ratio \xce\xb2", "%10.4f", flow.beta, "\xe2\x80\x94");
+      row("Reynolds number Re", "%10.4g", flow.reynolds, "\xe2\x80\x94");
+      row("Discharge coefficient C", "%10.6f", flow.coef_c, "\xe2\x80\x94");
+      row("Expansibility factor \xce\xb5", "%10.6f", flow.epsilon, "\xe2\x80\x94");
+      row("Isentropic exponent k", "%10.4f", flow.kappa, "\xe2\x80\x94");
 
       std::printf("\n");
       sep_d();
 
-      // ── Profil CPU ─────────────────────────────────────────────────────────
+      // ── CPU profile ────────────────────────────────────────────────────────
       double t_total = t_mix_us + t_rho_us + t_eta_us + t_qm_us;
-      std::printf("\n%s  PROFIL CPU%s\n", kCyan, kReset);
+      std::printf("\n%s  CPU PROFILE%s\n", kCyan, kReset);
       sep_s();
       auto prow = [](const char* op, const char* detail, double us, int it) {
         int llen = (int)std::strlen(op) - Utf8ExtraBytes(op);
@@ -1590,26 +1656,26 @@ int main() {
       int n_comp = kNumComponents;
       char mix_detail[48];
       std::snprintf(mix_detail, sizeof(mix_detail),
-                    "reguli mixare N\xc2\xb2+N\xc2\xb3  (N=%d)", n_comp);
-      prow("Constante BWRS", mix_detail,          t_mix_us, 0);
-      prow("Densitate \xcf\x81",    "bise\xc8\x9b\xc8\x9bie BWRS",  t_rho_us, iter_rho);
-      prow("V\xc3\xa2scozitate \xce\xb7", "Chapman-Enskog / N",       t_eta_us, 0);
-      prow("Debit Qm",         "itera\xc8\x9bie Reynolds",           t_qm_us,  iter_qm);
+                    "mixing rules N\xc2\xb2+N\xc2\xb3  (N=%d)", n_comp);
+      prow("BWRS constants", mix_detail,          t_mix_us, 0);
+      prow("Density \xcf\x81",       "BWRS bisection",     t_rho_us, iter_rho);
+      prow("Viscosity \xce\xb7",     "Chapman-Enskog / N", t_eta_us, 0);
+      prow("Flow rate Qm",    "Reynolds iteration", t_qm_us,  iter_qm);
       sep_s();
-      std::printf("  %sTotal calcul%s                                  "
+      std::printf("  %sTotal%s                                         "
                   "%s%7.2f \xc2\xb5s%s\n\n",
                   kBoldWhite, kReset, kBoldGreen, t_total, kReset);
 
-      std::printf("%s  EVALUARE EMBEDDED%s  (factori orientativi fa\xc8\x9b\xc4\x83 de PC)\n",
+      std::printf("%s  EMBEDDED ESTIMATE%s  (indicative factors relative to PC)\n",
                   kCyan, kReset);
       sep_s();
       struct { const char* name; double factor; } targets[] = {
-        { "ARM Cortex-M7 @480 MHz + FPU  (STM32H7)",          8.0  },
-        { "ARM Cortex-M4 @168 MHz + FPU  (STM32F4)",          22.0 },
-        { "Xtensa LX6    @240 MHz + FPU  (ESP32)",             16.0 },
-        { "MSP430 F5xx   @ 25 MHz + hw mult (TI)",            350.0 },
-        { "AVR           @ 16 MHz, f\xc4\x83r\xc4\x83 FPU (Mega2560)",  900.0 },
-        { "80C51         @ 12 MHz, f\xc4\x83r\xc4\x83 FPU",            3000.0 },
+        { "ARM Cortex-M7 @480 MHz + FPU  (STM32H7)",    8.0  },
+        { "ARM Cortex-M4 @168 MHz + FPU  (STM32F4)",    22.0 },
+        { "Xtensa LX6    @240 MHz + FPU  (ESP32)",       16.0 },
+        { "MSP430 F5xx   @ 25 MHz + hw mult (TI)",      350.0 },
+        { "AVR           @ 16 MHz, no FPU (Mega2560)",   900.0 },
+        { "80C51         @ 12 MHz, no FPU",             3000.0 },
       };
       for (auto& tg : targets) {
         double est = t_total * tg.factor / 1000.0;
@@ -1619,13 +1685,116 @@ int main() {
         std::printf("%s\xc3\x97%4.0f  %s%s%8.2f ms%s\n",
                     kReset, tg.factor, kReset, kBoldGreen, est, kReset);
       }
-      std::printf("%s  Not\xc4\x83:%s factori estima\xc8\x9bi (IPC, cache, compila\xc8\x9bor)."
-                  " M\xc4\x83sura\xc8\x9bi pe target pentru precizie.\n",
+      std::printf("%s  Note:%s estimated factors (IPC, cache, compiler)."
+                  " Measure on target for accuracy.\n",
                   kYellow, kReset);
 
       std::printf("\n");
       sep_d();
-      std::printf("\n\n");
+
+      // ── Measurement uncertainty (ISO 5167-1) ─────────────────────────────
+      std::printf("\n  %sCompute measurement uncertainty (ISO 5167-1)? [y/n]  %s>%s ",
+                  kBoldWhite, kCyan, kReset);
+      if (AskYesNo()) {
+        double uC_def;
+        switch (tip) {
+          case DeviceType::kOrificeCorner:
+          case DeviceType::kOrificeFlange:
+          case DeviceType::kOrificeDD2:
+            uC_def = (flow.beta > 0.60) ? 0.75 : 0.50;
+            break;
+          case DeviceType::kNozzleIsa:           uC_def = 0.80; break;
+          case DeviceType::kNozzleLongRadius:    uC_def = 2.00; break;
+          case DeviceType::kVenturiRoughCast:    uC_def = 0.70; break;
+          case DeviceType::kVenturiMachined:     uC_def = 1.00; break;
+          case DeviceType::kVenturiWeldedSheet:  uC_def = 1.50; break;
+          case DeviceType::kVenturiNozzle:       uC_def = 1.20; break;
+          default:                               uC_def = 1.00; break;
+        }
+        auto read_pct = [&](const char* label, double def_val) -> double {
+          double v = 0.0;
+          int llen = (int)std::strlen(label) - Utf8ExtraBytes(label);
+          std::printf("  %s>%s %s%s", kCyan, kReset, kBoldWhite, label);
+          for (int k = llen; k < 44; k++) std::putchar(' ');
+          std::printf("%s[default %s%.2f%%%s] : %s",
+                      kBoldWhite, kBoldGreen, def_val, kBoldWhite, kReset);
+          if (!ReadDouble(&v) || v <= 0.0) v = def_val;
+          return v;
+        };
+        std::printf("\n%s  \xe2\x94\x80\xe2\x94\x80 Measurement uncertainty  (ISO 5167-1)%s\n",
+                    kYellow, kReset);
+        std::printf(
+            "%s  Relative standard uncertainties [%%]  "
+            "\xe2\x80\x94  Enter or 0 \xe2\x86\x92 default:%s\n\n",
+            kBoldWhite, kReset);
+        double uC   = read_pct("u(C)   discharge coefficient (ISO 5167)",  uC_def);
+        double uEps = read_pct("u(\xce\xb5)    expansibility factor",              0.10);
+        double ud_p = read_pct("u(d)   orifice diameter",                      0.03);
+        double uD_p = read_pct("u(D)   pipe diameter",                         0.10);
+        double udp  = read_pct("u(\xce\x94p)  differential pressure",               0.20);
+        double uro  = read_pct("u(\xcf\x81)   gas density (BWRS)",                 0.30);
+        double b4   = std::pow(flow.beta, 4);
+        double fd   = 2.0 / (1.0 - b4);
+        double fD   = 2.0 * b4 / (1.0 - b4);
+        double cC   = uC,          cEps = uEps;
+        double cd   = fd * ud_p,   cD   = fD * uD_p;
+        double cdp  = 0.5 * udp,   cro  = 0.5 * uro;
+        double u_qm = std::sqrt(cC*cC + cEps*cEps + cd*cd + cD*cD + cdp*cdp + cro*cro);
+        double U_qm = 2.0 * u_qm;
+        std::printf("\n%s  Sensitivity factors  (\xce\xb2 = %.4f)%s\n", kCyan, flow.beta, kReset);
+        sep_s();
+        std::printf(
+            "  f_d = 2/(1\xe2\x88\x92\xce\xb2\xe2\x81\xb4) = %s%.4f%s     "
+            "f_D = 2\xce\xb2\xe2\x81\xb4/(1\xe2\x88\x92\xce\xb2\xe2\x81\xb4) = %s%.4f%s\n\n",
+            kBoldGreen, fd, kReset, kBoldGreen, fD, kReset);
+        std::printf("  %s%-12s  %8s   %11s   %15s%s\n",
+                    kBoldWhite, "Source", "u_i [%]", "Sensitivity", "Contribution [%]", kReset);
+        sep_s();
+        auto brow = [&](const char* src, double ui, double fi, double ci) {
+          int slen = (int)std::strlen(src) - Utf8ExtraBytes(src);
+          std::printf("  %s%s", kBoldWhite, src);
+          for (int k = slen; k < 12; k++) std::putchar(' ');
+          std::printf("%s  %s%8.4f%s   %11.4f   %s%15.4f%s\n",
+                      kReset, kBoldGreen, ui, kReset, fi, kBoldGreen, ci, kReset);
+        };
+        brow("C",          uC,   1.0, cC);
+        brow("\xce\xb5",   uEps, 1.0, cEps);
+        brow("d",          ud_p, fd,  cd);
+        brow("D",          uD_p, fD,  cD);
+        brow("\xce\x94p",  udp,  0.5, cdp);
+        brow("\xcf\x81",   uro,  0.5, cro);
+        sep_s();
+        row("Combined std. uncertainty  u(Qm)", "%10.4f", u_qm, "%");
+        row("Expanded uncertainty  U(Qm)  k=2, 95%", "%10.4f", U_qm, "%");
+        double U_abs_kgs = U_qm / 100.0 * qm;
+        std::printf("\n");
+        std::printf("  %s  Qm = %.4f \xc2\xb1 %.5f  kg/s%s\n",
+                    kBoldGreen, qm, U_abs_kgs, kReset);
+        std::printf("  %s  Qm = %.2f \xc2\xb1 %.3f  kg/h%s\n",
+                    kBoldGreen, qm * kSecondsPerHour, U_abs_kgs * kSecondsPerHour, kReset);
+        for (int i = 0; i < ref.n; i++) {
+          if (ror_ref[i] > 0.0) {
+            double qhref   = kSecondsPerHour / ror_ref[i] * qm;
+            double U_qhref = U_qm / 100.0 * qhref;
+            std::printf("  %s  Qv(%.2f\xc2\xb0""C) = %.2f \xc2\xb1 %.3f  %s%s\n",
+                        kBoldGreen, ref.t[i], qhref, U_qhref, ref.label[i], kReset);
+          }
+        }
+        std::printf("\n");
+        sep_d();
+      }
+
+      std::printf("\n  %s1%s new conditions   %s2%s change D / d"
+                  "   %s3%s change device   %sESC%s quit\n\n",
+                  kBoldGreen, kReset, kBoldGreen, kReset,
+                  kBoldGreen, kReset, kBoldWhite, kReset);
+      std::printf("  %s>%s ", kCyan, kReset);
+      {
+        int nav = ReadChoice(1, 3);
+        if (nav == 2) goto select_D;
+        if (nav == 3) break;
+        // nav == 1: loop back to reenter_T
+      }
     }
   }
 }
