@@ -1,7 +1,7 @@
 // =============================================================================
 // BWRS — Gas flow calculation through throttling devices
 // Revision 3.0  |  05.2026
-// Eng. Agavriloaie Constantin  (original R 01.2004)
+// Author  Constantin Agavriloaie  ·  CJ-RO  (original R 01.2004)
 // ELCOST Impex
 // =============================================================================
 //
@@ -30,22 +30,37 @@
 //      (at 20 °C reference temperature).
 //   4. Temperature T [°C], absolute pressure p [kPa], and differential
 //      pressure Δp [kPa] at the measurement point.
+//   5. Reference conditions — one of five presets or a custom temperature:
+//        Romania / EU  (DIN 1343)  :  0 °C and 15 °C / 101.325 kPa
+//        ISO 13443 / UK / Italy    : 15 °C / 101.325 kPa
+//        USA — AGA-3  (60 °F)      : 15.56 °C / 101.325 kPa
+//        Russia — GOST 30319-1     : 20 °C / 101.325 kPa
+//        Custom                    : user-entered T [°C]
 //
 // OUTPUTS (for each T / p / Δp set)
 //   • Mixture density ρ(T, p)                  [kg/m³]
 //   • Dynamic viscosity η(T, p)                [μPa·s]
-//   • Mass flow rate Qm                        [kg/s]
-//   • Volumetric flow at selectable reference conditions
+//   • Compressibility factor Z(T, p)           [—]
+//   • Mass flow rate Qm                        [kg/s  and  kg/h]
+//   • Volumetric flow at reference conditions  [Nm³/h, Sm³/h, m³/h]
 //       (0 °C / 101.325 kPa → Nm³/h; 15 °C / 101.325 kPa → Sm³/h; etc.)
 //   • Volumetric flow at T and p               [m³/h]
 //   • Mean gas velocity in pipe                [m/s]
 //   • Permanent pressure loss                  [kPa]
-//   • Throttling ratio β and Reynolds number Re
+//   • Throttling ratio β = d(t)/D(t)           [—]
+//   • Reynolds number Re                       [—]
+//   • Discharge coefficient C                  [—]
+//   • Expansibility factor ε                   [—]
+//   • Isentropic exponent κ                    [—]
+//   • Pipe and orifice diameters at T          [mm]
 //
 // VALIDATION
 //   Checks ISO 5167 applicability limits for pipe diameter,
 //   orifice diameter, throttling ratio β, and Reynolds number Re —
 //   displays an error message when a limit is exceeded.
+//   Thermal expansion corrections applied to D and d before use:
+//     pipe (carbon steel)        α_D = 12.2×10⁻⁶ /°C  (ISO 5167)
+//     orifice (stainless steel)  α_d = 16.5×10⁻⁶ /°C
 //
 // DENSITY ALGORITHM
 //   Bisection on the BWRS equation (Starling 1973, 11 parameters) until
@@ -56,10 +71,50 @@
 //   Mixture constants are computed once from composition using quadratic
 //   mixing rules (A₀–E₀, γ) and cubic mixing rules (a–d, α).
 //
+// VISCOSITY ALGORITHM
+//   Chapman-Enskog dilute-gas model with high-density correction
+//   (Lucas / Chung-Lee-Starling):
+//     η = η₀(T, x) + kA/ξ · [exp(k₁·ρ_r) − exp(−k₂·ρ_r)]^k₃
+//   where η₀ is the low-pressure mixture viscosity from kinetic theory,
+//   ρ_r = ρ/ρ_c the reduced density, and ξ the viscosity reducing
+//   parameter derived from Tc, M, Pc of the mixture.
+//
+// ISENTROPIC EXPONENT
+//   Computed from the ideal-gas molar heat capacity at 20 °C:
+//     κ = Cp° / (Cp° − R),   Cp° = Σ xᵢ·Cp°ᵢ,   R = 8.314 J/(mol·K)
+//   Used in the ISO 5167 expansibility factor ε.
+//
 // FLOW ALGORITHM
 //   Reynolds iteration until relative convergence |ΔQm/Qm| < 10⁻⁶.
 //   Discharge coefficient C and expansibility factor ε are recalculated
 //   at each iteration as a function of Re and β.
+//
+// UNCERTAINTY (ISO 5167-1)
+//   Optional measurement uncertainty budget after each calculation.
+//   Relative standard uncertainties [%] entered by user (or defaults):
+//     u(C)  — discharge coefficient, ISO 5167 default per device type
+//     u(ε)  — expansibility factor
+//     u(d)  — orifice diameter
+//     u(D)  — pipe diameter
+//     u(Δp) — differential pressure transmitter
+//     u(ρ)  — gas density (BWRS equation of state)
+//   Combined relative standard uncertainty (law of propagation):
+//     u²(Qm)/Qm² = u²(C) + u²(ε) + [2/(1−β⁴)]²·u²(d)
+//                         + [2β⁴/(1−β⁴)]²·u²(D)
+//                         + ¼·u²(Δp) + ¼·u²(ρ)
+//   Expanded uncertainty: U(Qm) = 2·u(Qm)  at k=2, 95% confidence.
+//   Absolute ± values reported for Qm [kg/s, kg/h] and Qv [ref. unit].
+//
+// PERSISTENCE
+//   Composition saved to / loaded from  bwr_comp.dat  (35 molar fractions).
+//   Device configuration saved to / loaded from  bwr_conf.dat
+//   (device type integer, D [mm], d [mm]).
+//
+// SELF-TEST
+//   Optional validation suite at startup: 8 gas compositions (CH4, C2H6,
+//   CO2, H2, N2, Ar, standard NG, rich NG, synthetic air, H2S) tested for
+//   density, viscosity, Z-factor, molar mass, and Qm across all 9 ISO 5167
+//   device types.  Results checked against NIST WebBook, AGA-8, ISO 5167.
 //
 // REFERENCES
 //   • ISO 5167-2:2003 — Orifice plates (Reader-Harris/Gallagher equation)
@@ -461,10 +516,11 @@ int main() {
 
   // ── Main header ────────────────────────────────────────────────────────────
   std::printf(
-      "%s  \xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\n"
-      "  %sELCOST Impex%s  \xc2\xb7  BWRS Gas Flow Calculator                          v3.0/2026\n"
+      "%s  \xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\n"
+      "  %sELCOST Impex%s  \xc2\xb7  BWRS Gas Flow Calculator v3.0/2026\n"
+      "  Author  %sConstantin Agavriloaie%s  \xc2\xb7  CJ-RO\n"
       "  \xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\n\n",
-      kHdrYellow, kHdrGreen, kHdrYellow);
+      kHdrYellow, kHdrGreen, kHdrYellow, kHdrGreen, kHdrYellow);
 
   // ── Calculation models ─────────────────────────────────────────────────────
   std::printf("%s  CALCULATION MODELS%s\n", kHdrCyan, kReset);
@@ -1382,10 +1438,10 @@ int main() {
   double ror_ref[2] = {};
   for (int i = 0; i < ref.n; i++) {
     ror_ref[i] = CalcDensity(ref.t[i], 1, bwr);
-    std::printf("%s  Reference density   %5.2f\xC2\xB0""C / 101.325 kPa :%s %s%8.4f%s kg/m\xC2\xB3\n",
+    std::printf("%s  Reference density   %5.2f\xC2\xB0""C / 101.325 kPa :%s %s%8.4f%s [kg/m\xC2\xB3]\n",
                 kBoldWhite, ref.t[i], kReset, kBoldGreen, ror_ref[i], kReset);
     double z_ref = bwr.molar_mass / (ror_ref[i] * kGasConstantR * (ref.t[i] + kKelvinOffset));
-    std::printf("%s  Z factor            %5.2f\xC2\xB0""C / 101.325 kPa :%s %s%8.6f%s \xe2\x80\x94\n",
+    std::printf("%s  Z factor            %5.2f\xC2\xB0""C / 101.325 kPa :%s %s%8.6f%s [\xe2\x80\x94]\n",
                 kBoldWhite, ref.t[i], kReset, kBoldGreen, z_ref, kReset);
   }
 
@@ -1406,7 +1462,10 @@ int main() {
     for (int k = llen; k < 42; k++) std::putchar(' ');
     std::printf(" :%s %s", kReset, kBoldGreen);
     std::printf(fmt, val);
-    std::printf("%s %s\n", kReset, unit);
+    if (unit && unit[0])
+      std::printf("%s [%s]\n", kReset, unit);
+    else
+      std::printf("%s\n", kReset);
   };
 
   // ── Outer loop: select measurement device ─────────────────────────────────
@@ -1648,8 +1707,10 @@ int main() {
         int llen = (int)std::strlen(op) - Utf8ExtraBytes(op);
         std::printf("  %s%s", kBoldWhite, op);
         for (int k = llen; k < 30; k++) std::putchar(' ');
-        std::printf("%s  %-28s%s %s%7.2f \xc2\xb5s%s",
-                    kReset, detail, kReset, kBoldGreen, us, kReset);
+        int dlen = (int)std::strlen(detail) - Utf8ExtraBytes(detail);
+        std::printf("%s  %s%s", kReset, detail, kReset);
+        for (int k = dlen; k < 28; k++) std::putchar(' ');
+        std::printf("%s%7.2f%s [\xc2\xb5s]", kBoldGreen, us, kReset);
         if (it > 0) std::printf("  %s%d iter.%s", kYellow, it, kReset);
         std::putchar('\n');
       };
@@ -1662,29 +1723,51 @@ int main() {
       prow("Viscosity \xce\xb7",     "Chapman-Enskog / N", t_eta_us, 0);
       prow("Flow rate Qm",    "Reynolds iteration", t_qm_us,  iter_qm);
       sep_s();
-      std::printf("  %sTotal%s                                         "
-                  "%s%7.2f \xc2\xb5s%s\n\n",
+      std::printf("  %sTotal%s                                                       "
+                  "%s%7.2f%s [\xc2\xb5s]\n\n",
                   kBoldWhite, kReset, kBoldGreen, t_total, kReset);
 
       std::printf("%s  EMBEDDED ESTIMATE%s  (indicative factors relative to PC)\n",
                   kCyan, kReset);
       sep_s();
-      struct { const char* name; double factor; } targets[] = {
-        { "ARM Cortex-M7 @480 MHz + FPU  (STM32H7)",    8.0  },
-        { "ARM Cortex-M4 @168 MHz + FPU  (STM32F4)",    22.0 },
-        { "Xtensa LX6    @240 MHz + FPU  (ESP32)",       16.0 },
-        { "MSP430 F5xx   @ 25 MHz + hw mult (TI)",      350.0 },
-        { "AVR           @ 16 MHz, no FPU (Mega2560)",   900.0 },
-        { "80C51         @ 12 MHz, no FPU",             3000.0 },
+      struct { const char* proc; const char* freq; const char* fpu;
+               const char* chip; double factor; } targets[] = {
+        { "ARM Cortex-M7",  "@600 MHz", "+ FPU",     "(i.MX RT1062)",   6.0 },
+        { "ARM Cortex-M7",  "@480 MHz", "+ FPU",     "(STM32H7)",       8.0 },
+        { "Xtensa LX7",     "@240 MHz", "+ FPU",     "(ESP32-S3)",     12.0 },
+        { "Xtensa LX6",     "@240 MHz", "+ FPU",     "(ESP32)",        16.0 },
+        { "ARM Cortex-M4",  "@168 MHz", "+ FPU",     "(STM32F4)",      22.0 },
+        { "ARM Cortex-M4",  "@120 MHz", "+ FPU",     "(STM32F3)",      32.0 },
+        { "ARM Cortex-M33", "@ 64 MHz", "+ FPU",     "(nRF9160)",      55.0 },
+        { "ARM Cortex-M3",  "@ 72 MHz", "no FPU",    "(STM32F103)",   200.0 },
+        { "RISC-V RV32",    "@160 MHz", "no FPU",    "(ESP32-C3)",    180.0 },
+        { "MSP430 F5xx",    "@ 25 MHz", "+ hw mult", "(TI)",          350.0 },
+        { "AVR",            "@ 16 MHz", "no FPU",    "(Mega2560)",    900.0 },
+        { "80C51",          "@ 12 MHz", "no FPU",    "",             3000.0 },
+        { "Zilog Z80",      "@ 4-8 MHz","no FPU",    "(Elster)",     5000.0 },
       };
+      auto pcol = [](const char* s, int w) {
+        std::printf("%s", s);
+        int len = (int)std::strlen(s) - Utf8ExtraBytes(s);
+        for (int k = len; k < w; k++) std::putchar(' ');
+      };
+      std::printf("  %s", kBoldWhite);
+      pcol("Processor", 14); std::printf("  ");
+      pcol("Freq.",      9); std::printf("  ");
+      pcol("FPU",        9); std::printf("  ");
+      pcol("Chip",      13);
+      std::printf("  \xc3\x97Mult  Est.[ms]%s\n", kReset);
+      sep_s();
       for (auto& tg : targets) {
         double est = t_total * tg.factor / 1000.0;
-        int tlen = (int)std::strlen(tg.name) - Utf8ExtraBytes(tg.name);
-        std::printf("  %s%s", kBoldWhite, tg.name);
-        for (int k = tlen; k < 48; k++) std::putchar(' ');
-        std::printf("%s\xc3\x97%4.0f  %s%s%8.2f ms%s\n",
-                    kReset, tg.factor, kReset, kBoldGreen, est, kReset);
+        std::printf("  %s", kBoldWhite); pcol(tg.proc, 14);
+        std::printf("%s  ", kReset);     pcol(tg.freq,  9);
+        std::printf("  ");               pcol(tg.fpu,   9);
+        std::printf("  ");               pcol(tg.chip, 13);
+        std::printf("  \xc3\x97%4.0f  %s%8.2f%s [ms]\n",
+                    tg.factor, kBoldGreen, est, kReset);
       }
+      sep_s();
       std::printf("%s  Note:%s estimated factors (IPC, cache, compiler)."
                   " Measure on target for accuracy.\n",
                   kYellow, kReset);
@@ -1768,15 +1851,15 @@ int main() {
         row("Expanded uncertainty  U(Qm)  k=2, 95%", "%10.4f", U_qm, "%");
         double U_abs_kgs = U_qm / 100.0 * qm;
         std::printf("\n");
-        std::printf("  %s  Qm = %.4f \xc2\xb1 %.5f  kg/s%s\n",
+        std::printf("  %s  Qm = %.4f \xc2\xb1 %.5f  [kg/s]%s\n",
                     kBoldGreen, qm, U_abs_kgs, kReset);
-        std::printf("  %s  Qm = %.2f \xc2\xb1 %.3f  kg/h%s\n",
+        std::printf("  %s  Qm = %.2f \xc2\xb1 %.3f  [kg/h]%s\n",
                     kBoldGreen, qm * kSecondsPerHour, U_abs_kgs * kSecondsPerHour, kReset);
         for (int i = 0; i < ref.n; i++) {
           if (ror_ref[i] > 0.0) {
             double qhref   = kSecondsPerHour / ror_ref[i] * qm;
             double U_qhref = U_qm / 100.0 * qhref;
-            std::printf("  %s  Qv(%.2f\xc2\xb0""C) = %.2f \xc2\xb1 %.3f  %s%s\n",
+            std::printf("  %s  Qv(%.2f\xc2\xb0""C) = %.2f \xc2\xb1 %.3f  [%s]%s\n",
                         kBoldGreen, ref.t[i], qhref, U_qhref, ref.label[i], kReset);
           }
         }
