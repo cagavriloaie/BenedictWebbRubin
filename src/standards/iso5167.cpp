@@ -1,4 +1,4 @@
-#include "iso5167.h"
+﻿#include "iso5167.h"
 #include "../common/constants.h"
 #include "../common/types.h"
 #include <algorithm>
@@ -16,7 +16,7 @@ void printError(ErrorCode code, double reynoldsNum) {
       std::printf("\n  Throttling device orifice diameter is out of range\n");
       break;
     case ErrorCode::THROTTLE_RATIO:
-      std::printf("\n  Throttling ratio \xce\xb2 is out of range\n");
+      std::printf("\n  Throttling ratio " U_BETA " is out of range\n");
       break;
     case ErrorCode::REYNOLDS:
       std::printf("\n  Reynolds number (%g) is out of range\n", reynoldsNum);
