@@ -1,6 +1,6 @@
 ﻿#include "iso5167.h"
-#include "../common/constants.h"
-#include "../common/types.h"
+#include "../Common/constants.h"
+#include "../Common/types.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>

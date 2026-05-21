@@ -1,6 +1,6 @@
-#pragma once
-#include "../common/constants.h"
-#include "../common/types.h"
+﻿#pragma once
+#include "../Common/constants.h"
+#include "../Common/types.h"
 
 // Pseudo-critical properties needed for the viscosity correlation.
 struct MixtureThermo {

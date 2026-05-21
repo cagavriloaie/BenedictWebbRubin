@@ -1,7 +1,7 @@
-﻿# CMakeList.txt : CMake project for BWR, include source and define
+﻿# CMakeList.txt : CMake project for BWRSflow, include source and define
 # project specific logic here.
 #
-cmake_minimum_required (VERSION 3.8)
+cmake_minimum_required (VERSION 3.10)
 
 # Enable Hot Reload for MSVC compilers if supported.
 if (POLICY CMP0141)
@@ -9,29 +9,33 @@ if (POLICY CMP0141)
   set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>")
 endif()
 
-project ("BWR")
+project ("BWRSflow")
 
 # Add source to this project's executable.
-add_executable (BWR
-    "BWR.cpp" "BWR.h" "BWR.rc"
-    "src/common/constants.h"
-    "src/common/types.h"
-    "src/data/components.h"
-    "src/data/components.cpp"
-    "src/formulas/bwrs.h"
-    "src/formulas/bwrs.cpp"
-    "src/formulas/viscosity.h"
-    "src/formulas/viscosity.cpp"
-    "src/standards/iso5167.h"
-    "src/standards/iso5167.cpp"
-    "src/ui/console.h"
-    "src/ui/console.cpp"
-    "src/tests/validation.h"
-    "src/tests/validation.cpp"
+add_executable (BWRSflow
+    "App/BWRSflow.cpp" "App/BWRSflow.h" "App/BWRSflow.rc"
+    "Src/Common/constants.h"
+    "Src/Common/types.h"
+    "Src/Data/components.h"
+    "Src/Data/components.cpp"
+    "Src/Formulas/bwrs.h"
+    "Src/Formulas/bwrs.cpp"
+    "Src/Formulas/viscosity.h"
+    "Src/Formulas/viscosity.cpp"
+    "Src/Standards/iso5167.h"
+    "Src/Standards/iso5167.cpp"
+    "Src/Ui/console.h"
+    "Src/Ui/console.cpp"
+    "Src/Tests/validation.h"
+    "Src/Tests/validation.cpp"
 )
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
-  set_property(TARGET BWR PROPERTY CXX_STANDARD 20)
+  set_property(TARGET BWRSflow PROPERTY CXX_STANDARD 20)
+endif()
+
+if (MSVC)
+  target_compile_definitions(BWRSflow PRIVATE _CRT_SECURE_NO_WARNINGS)
 endif()
 
 # TODO: Add tests and install targets if needed.

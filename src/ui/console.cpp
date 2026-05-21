@@ -1,17 +1,55 @@
 ﻿#include "console.h"
-#include "../tests/validation.h"
-#include "../formulas/bwrs.h"
+#include "../Tests/validation.h"
+#include "../Formulas/bwrs.h"
+#include "../Data/components.h"
 
 #ifdef _WIN32
 #  define WIN32_LEAN_AND_MEAN
 #  include <windows.h>
 #  include <conio.h>
+#else
+#  include <termios.h>
+#  include <unistd.h>
+#  include <clocale>
 #endif
 
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+
+// Single-character read — no echo, no buffering, cross-platform.
+// Returns 0 for arrow/function keys (callers already skip ch==0).
+// Returns 27 for bare ESC only.
+static int portable_getch() {
+#ifdef _WIN32
+  return _getch();
+#else
+  struct termios oldt, newt;
+  tcgetattr(STDIN_FILENO, &oldt);
+  newt = oldt;
+  newt.c_lflag &= ~(ICANON | ECHO);
+  newt.c_cc[VMIN]  = 1;
+  newt.c_cc[VTIME] = 0;
+  tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+  int ch = getchar();
+  if (ch == 0x1B) {
+    // Peek with 100 ms timeout — distinguishes bare ESC from escape sequences.
+    newt.c_cc[VMIN]  = 0;
+    newt.c_cc[VTIME] = 1;
+    tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+    int next = getchar();
+    if (next != EOF) {
+      while (getchar() != EOF) {}   // drain rest of sequence
+      tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+      return 0;   // treat as "ignored special key"
+    }
+    // nothing followed → real ESC
+  }
+  tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+  return ch;
+#endif
+}
 
 const char* const COMP_NAMES[ARRAY_SIZE] = {
     nullptr,
@@ -34,10 +72,10 @@ bool ReadDouble(double* val) {
   char buf[64] = {};
   int pos = 0;
   for (;;) {
-    int ch = _getch();
+    int ch = portable_getch();
     if (ch == 27) ExitApp();
-    if (ch == 0 || ch == 0xE0) { (void)_getch(); continue; }
-    if (ch == '\r') {
+    if (ch == 0 || ch == 0xE0) { (void)portable_getch(); continue; }
+    if (ch == '\r' || ch == '\n') {
       std::printf("\n");
       std::fflush(stdout);
       break;
@@ -68,9 +106,9 @@ bool ReadDouble(double* val) {
 
 int ReadChoice(int lo, int hi) {
   for (;;) {
-    int ch = _getch();
+    int ch = portable_getch();
     if (ch == 27) ExitApp();
-    if (ch == 0 || ch == 0xE0) { (void)_getch(); continue; }
+    if (ch == 0 || ch == 0xE0) { (void)portable_getch(); continue; }
     if (ch >= '0' + lo && ch <= '0' + hi) {
       std::printf("%c\n", ch);
       std::fflush(stdout);
@@ -81,7 +119,7 @@ int ReadChoice(int lo, int hi) {
 
 bool AskYesNo() {
   for (;;) {
-    int ch = _getch();
+    int ch = portable_getch();
     if (ch == 27) ExitApp();
     if (ch == 'y' || ch == 'Y') {
       std::printf("y\n");
@@ -120,11 +158,10 @@ void PrintComposition(const double* x) {
 }
 
 bool LoadComposition(double* x) {
-  FILE* f = nullptr;
-  fopen_s(&f, COMP_FILE, "r");
+  FILE* f = std::fopen(COMP_FILE, "r");
   if (!f) return false;
   for (int i = 1; i <= NUM_COMPONENTS; i++) {
-    if (fscanf_s(f, "%lf", &x[i]) != 1) {
+    if (std::fscanf(f, "%lf", &x[i]) != 1) {
       std::fclose(f);
       return false;
     }
@@ -134,8 +171,7 @@ bool LoadComposition(double* x) {
 }
 
 void SaveComposition(const double* x) {
-  FILE* f = nullptr;
-  fopen_s(&f, COMP_FILE, "w");
+  FILE* f = std::fopen(COMP_FILE, "w");
   if (!f) {
     std::printf("%s  Could not open %s for writing.%s\n", COLOR_BOLD_RED, COMP_FILE, COLOR_RESET);
     return;
@@ -149,17 +185,15 @@ void SaveComposition(const double* x) {
 }
 
 bool LoadConfig(int* tip_raw, double* d_int, double* d_orif) {
-  FILE* f = nullptr;
-  fopen_s(&f, CONF_FILE, "r");
+  FILE* f = std::fopen(CONF_FILE, "r");
   if (!f) return false;
-  bool ok = (fscanf_s(f, "%d %lf %lf", tip_raw, d_int, d_orif) == 3);
+  bool ok = (std::fscanf(f, "%d %lf %lf", tip_raw, d_int, d_orif) == 3);
   std::fclose(f);
   return ok;
 }
 
 void SaveConfig(int tip_raw, double d_int, double d_orif) {
-  FILE* f = nullptr;
-  fopen_s(&f, CONF_FILE, "w");
+  FILE* f = std::fopen(CONF_FILE, "w");
   if (!f) {
     std::printf("%s  Could not open %s for writing.%s\n", COLOR_BOLD_RED, CONF_FILE, COLOR_RESET);
     return;
@@ -289,7 +323,7 @@ void InitConsole() {
     CONSOLE_FONT_INFOEX cfi = {};
     cfi.cbSize = sizeof(cfi);
     GetCurrentConsoleFontEx(hCon, FALSE, &cfi);
-    cfi.dwFontSize.Y = 14;
+    cfi.dwFontSize.Y = 10;
     wcscpy_s(cfi.FaceName, L"Consolas");
     SetCurrentConsoleFontEx(hCon, FALSE, &cfi);
 
@@ -297,14 +331,19 @@ void InitConsole() {
     GetConsoleMode(hCon, &mode);
     SetConsoleMode(hCon, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
   }
+#else
+  std::setlocale(LC_ALL, "");   // activate system locale (UTF-8 on most Linux distros)
 #endif
+}
+
+void WaitKey() {
+  portable_getch();
 }
 
 void ReadComposition(double* x) {
   bool comp_loaded = false;
   {
-    FILE* cf = nullptr;
-    fopen_s(&cf, COMP_FILE, "r");
+    FILE* cf = std::fopen(COMP_FILE, "r");
     if (cf) {
       std::fclose(cf);
       std::printf("%s\n  A saved composition exists. Reuse it? [y/n] %s>%s ",
@@ -429,7 +468,8 @@ void PrintFlowResults(DeviceType tip, double d_int, double d_orif,
                       double temperature, double pressure, double pressure_diff,
                       double ro, double eta, double qm,
                       const FlowResult& flow, const BwrConst& bwr,
-                      const CountryRef& ref, const double* ror_ref) {
+                      const CountryRef& ref, const double* ror_ref,
+                      const double* x) {
   std::printf("\n");
   sep_d();
   std::printf("%s  RESULTS  " U_MDASH "  %s%s\n",
@@ -462,12 +502,21 @@ void PrintFlowResults(DeviceType tip, double d_int, double d_orif,
   double Z_tp = (pressure / KPA_PER_ATM) * bwr.m_molarMass
               / (ro * GAS_CONSTANT_R * (temperature + KELVIN_OFFSET));
 
+  double speed_sound = std::sqrt(flow.m_kappa * pressure * 1000.0 / ro);
+  double mach_number = flow.m_velocity / speed_sound;
+  double kin_visc_mm2s = (eta / ro) * 1.0e6;
+  double dp_over_p_pct = pressure_diff / pressure * 100.0;
+
   std::printf("\n%s  Fluid  (at t, p)%s\n", COLOR_CYAN, COLOR_RESET);
   sep_s();
   row("Density " U_RHO "(t,p)", "%10.4f", ro, "kg/m" U_SUP3);
   row("Dynamic viscosity " U_ETA "(t,p)", "%10.4f",
       eta * PA_TO_MICRO_PA, U_MICRO "Pa" U_CDOT "s");
+  row("Kinematic viscosity " U_ETA "/" U_RHO, "%10.4f", kin_visc_mm2s, "mm" U_SUP2 "/s");
   row("Compressibility factor Z(t,p)", "%10.6f", Z_tp, U_MDASH);
+  row("Speed of sound c", "%10.2f", speed_sound, "m/s");
+  row("Mach number Ma", "%10.5f", mach_number, U_MDASH);
+  row(U_DELTA "p / p", "%10.3f", dp_over_p_pct, "%");
 
   std::printf("\n%s  Flow rates%s\n", COLOR_CYAN, COLOR_RESET);
   sep_s();
@@ -491,6 +540,26 @@ void PrintFlowResults(DeviceType tip, double d_int, double d_orif,
   row("Discharge coefficient C", "%10.6f", flow.m_coefC, U_MDASH);
   row("Expansibility factor " U_EPS, "%10.6f", flow.m_epsilon, U_MDASH);
   row("Isentropic exponent k", "%10.4f", flow.m_kappa, U_MDASH);
+
+  // ── Calorific section ────────────────────────────────────────────────────
+  double hhv_mol = 0.0;
+  for (int i = 1; i <= NUM_COMPONENTS; i++) hhv_mol += x[i] * HHV_TABLE[i];
+  double m_kg_per_mol = bwr.m_molarMass * 1.0e-3;
+  double hhv_mj_kg    = hhv_mol / m_kg_per_mol;
+  double hhv_mj_m3    = hhv_mol / MOLAR_VOL_0C;
+  double rel_density  = bwr.m_molarMass / MOLAR_MASS_AIR;
+  double wobbe        = hhv_mj_m3 / std::sqrt(rel_density);
+  double qe_kw        = qm * hhv_mj_kg * KJ_PER_MJ;
+  double qe_mj_h      = qe_kw * MJ_PER_KWH;
+
+  std::printf("\n%s  Calorific  (gross / superior, ISO 6976)%s\n", COLOR_CYAN, COLOR_RESET);
+  sep_s();
+  row("HHV mixture (per mass)",   "%10.4f", hhv_mj_kg, "MJ/kg");
+  row("HHV mixture (0" U_DEG "C vol.)", "%10.4f", hhv_mj_m3, "MJ/m" U_SUP3);
+  row("Relative density d",       "%10.6f", rel_density, U_MDASH);
+  row("Wobbe index Ws (0" U_DEG "C)",   "%10.4f", wobbe, "MJ/m" U_SUP3);
+  row("Energy flow Qe",           "%10.4f", qe_kw,  "kW");
+  row("Energy flow Qe",           "%10.2f", qe_mj_h, "MJ/h");
 
   std::printf("\n");
   sep_d();
@@ -615,7 +684,7 @@ void PrintUncertainty(DeviceType tip, const FlowResult& flow, double qm,
       U_MDASH "  Enter or 0 " U_RARR " default:%s\n\n",
       COLOR_BOLD_WHITE, COLOR_RESET);
   double uC   = read_pct("u(C)   discharge coefficient (ISO 5167)",  uC_def);
-  double uEps = read_pct("u(" U_EPS ")    expansibility factor",              0.10);
+  double uEps = read_pct("u(" U_EPS ")   expansibility factor",               0.10);
   double ud_p = read_pct("u(d)   orifice diameter",                      0.03);
   double uD_p = read_pct("u(D)   pipe diameter",                         0.10);
   double udp  = read_pct("u(" U_DELTA "p)  differential pressure",               0.20);

@@ -1,0 +1,140 @@
+===============================================================================
+  BWRSflow — Gas Flow Calculator
+  Instalare si compilare pe Linux
+  ELCOST Impex | v3.0 / 2026
+===============================================================================
+
+DESCRIERE
+---------
+BWRSflow calculeaza debitul de gaze prin dispozitive de strangulare (placi
+orificiu, ajutaje, tevi Venturi) folosind:
+  - Ecuatia de stare Benedict-Webb-Rubin-Starling (BWRS) pentru densitate
+  - Modelul Chapman-Enskog cu corectie la densitate inalta pentru viscozitate
+  - ISO 5167-2/3/4:2003 pentru coeficientul de debit si factorul de expansiune
+
+35 componente, 9 tipuri de dispozitive, conditii de referinta configurabile.
+
+Documentatie completa (formule, standarde, ghid de utilizare, FAQ):
+  Documentation/BWRSflow.md
+
+
+CERINTE SISTEM
+--------------
+  - Linux x86_64 (Ubuntu 20.04+, Debian 11+, Fedora 36+, Arch, etc.)
+  - GCC >= 10  SAU  Clang >= 12  (suport C++20)
+  - CMake >= 3.10
+  - Git (pentru clonare)
+  - Terminal cu suport UTF-8 si ANSI (majoritatea terminalelor moderne)
+
+
+INSTALARE DEPENDENTE
+--------------------
+
+Ubuntu / Debian / Linux Mint:
+  sudo apt update
+  sudo apt install -y git build-essential cmake
+
+Fedora / RHEL / CentOS Stream:
+  sudo dnf install -y git gcc-c++ cmake
+
+Arch Linux / Manjaro:
+  sudo pacman -S --noconfirm git gcc cmake
+
+openSUSE:
+  sudo zypper install -y git gcc-c++ cmake
+
+
+VERIFICARE VERSIUNI
+-------------------
+Dupa instalare, verificati ca versiunile sunt suficiente:
+
+  git --version        # orice versiune recenta
+  g++ --version        # trebuie >= 10.x
+  cmake --version      # trebuie >= 3.10
+
+Daca g++ nu este disponibil, incercati:
+  g++ --version || clang++ --version
+
+
+DESCARCARE SURSA
+----------------
+  git clone https://github.com/cagavriloaie/BenedictWebbRubin
+  cd BenedictWebbRubin
+
+
+COMPILARE
+---------
+Configurare CMake (genereaza fisierele de build in folderul ./Build):
+  cmake -B Build -S .
+
+Compilare (Release — optimizat):
+  cmake --build Build --config Release
+
+Executabilul rezultat:
+  ./Build/BWRSflow
+
+
+RULARE
+------
+Din directorul radacina al proiectului:
+  ./Build/BWRSflow
+
+La prima pornire aplicatia poate rula un test de validare optional.
+Fisierele de configuratie salvate:
+  BWRSflow_comp.dat   — fractii molare compozitie amestec
+  BWRSflow_conf.dat   — tip dispozitiv si diametre
+
+
+RECOMPILARE DUPA MODIFICARI
+----------------------------
+Nu este nevoie sa rulati din nou cmake -B Build.
+Este suficient:
+  cmake --build Build
+
+
+STERGERE BUILD (start curat)
+------------------------------
+  rm -rf Build
+  cmake -B Build -S .
+  cmake --build Build
+
+
+DEPANARE PROBLEME FRECVENTE
+----------------------------
+
+Eroare: "g++: command not found"
+  Solutie Ubuntu/Debian:  sudo apt install build-essential
+  Solutie Fedora:         sudo dnf install gcc-c++
+
+Eroare: "cmake: command not found"
+  Solutie Ubuntu/Debian:  sudo apt install cmake
+  Solutie Fedora:         sudo dnf install cmake
+
+Eroare: "C++20 not supported"
+  GCC-ul instalat este prea vechi (< 10). Pe Ubuntu 18.04:
+    sudo add-apt-repository ppa:ubuntu-toolchain-r/test
+    sudo apt update && sudo apt install gcc-12 g++-12
+    export CXX=g++-12 && cmake -B Build -S . && cmake --build Build
+
+Caracterele UTF-8 (rho, eta, beta, epsilon) nu se afiseaza corect:
+  Asigurati-va ca terminalul foloseste UTF-8:
+    echo $LANG          # trebuie sa contina UTF-8, ex: ro_RO.UTF-8
+    export LANG=en_US.UTF-8
+
+Culorile ANSI nu functioneaza:
+  Aplicatia detecteaza automat suportul ANSI. Daca terminalul nu suporta
+  culori, acestea sunt ignorate. Incercati un terminal modern (gnome-terminal,
+  konsole, alacritty, xterm).
+
+
+NOTE
+----
+  - Fisierele .dat de configuratie sunt create in directorul curent de lucru
+    (de unde este lansata aplicatia), nu in directorul executabilului.
+  - Aplicatia nu necesara drepturi de administrator pentru rulare.
+  - Nu exista dependente externe in afara de biblioteca standard C++.
+
+===============================================================================
+  Contact: office@elcost.ro
+  Sursa:   https://github.com/cagavriloaie/BenedictWebbRubin
+===============================================================================

@@ -49,6 +49,11 @@ constexpr double SECONDS_PER_HOUR   = 3600.0;   // s/h, for Qm [kg/s] → Q [m³
 constexpr double PA_TO_MICRO_PA     = 1.0e6;    // μPa·s per Pa·s
 constexpr int    COMP_NAME_WIDTH    = 25;        // column width for component names
 
+constexpr double MOLAR_MASS_AIR     = 28.9625;  // [g/mol] — ISO 6976 dry air
+constexpr double MOLAR_VOL_0C       = 0.022414;  // [m³/mol] ideal gas at 0°C / 101.325 kPa
+constexpr double KJ_PER_MJ          = 1000.0;
+constexpr double MJ_PER_KWH         = 3.6;
+
 // UTF-8 string constants — use #define so they splice into string literals
 // Greek / physics
 #define U_RHO    "\xcf\x81"          // ρ

@@ -201,3 +201,23 @@ const double CP0_IDEAL[ARRAY_SIZE] = {
     28.8,   29.1,   34.2,  20.8,  20.8,  29.1,
     29.4,   37.1,   42.9,  63.9,  35.7,  44.0
 };
+
+// Gross (superior) calorific value [MJ/mol] — ISO 6976:2016 Table 1.
+// C5–C8 isomers without ISO entry are estimated by group-contribution (±0.01 MJ/mol).
+// Inerts (He=27, Ar=28, N2=29, O2=30, CO2=31) = 0.
+const double HHV_TABLE[ARRAY_SIZE] = {
+    // 0       CH4        C2H6       C3H8       i-C4       n-C4
+       0,      0.890334,  1.559725,  2.219944,  2.871060,  2.877098,
+    // neo-C5  i-C5       n-C5       2,2-dimC4  2,3-dimC4
+       3.528610, 3.528330, 3.536142, 4.188000,  4.191000,
+    // 3-mC5   2-mC5      n-C6      2,4-dimC5  2,2,3-trimC4
+       4.188000, 4.187000, 4.194174, 4.847000,  4.847000,
+    // 2-mC6   3-mC6      3-eC5     n-C7       2,2,4-trimC5
+       4.845000, 4.845000, 4.847000, 4.853453,  5.461000,
+    // n-C8    C6H6      C7H8       H2         CO
+       5.511855, 3.267636, 3.909820, 0.285825,  0.282984,
+    // H2S     He         Ar         N2         O2
+       0.562008, 0.0,      0.0,      0.0,       0.0,
+    // CO2     C2H4       C3H6       NH3        C2H2
+       0.0,    1.410963,  2.057560,  0.382810,  1.299427
+};

@@ -1,6 +1,6 @@
-#pragma once
-#include "../common/constants.h"
-#include "../common/types.h"
+﻿#pragma once
+#include "../Common/constants.h"
+#include "../Common/types.h"
 
 // Prints the ISO 5167 error message for the given error code.
 void printError(ErrorCode code, double reynoldsNum);

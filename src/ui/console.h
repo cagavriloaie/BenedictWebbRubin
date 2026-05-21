@@ -1,10 +1,10 @@
-#pragma once
-#include "../common/constants.h"
-#include "../common/types.h"
+﻿#pragma once
+#include "../Common/constants.h"
+#include "../Common/types.h"
 
 // File names used for persistence
-inline constexpr const char* COMP_FILE = "bwr_comp.dat";
-inline constexpr const char* CONF_FILE = "bwr_conf.dat";
+inline constexpr const char* COMP_FILE = "BWRSflow_comp.dat";
+inline constexpr const char* CONF_FILE = "BWRSflow_conf.dat";
 
 // Component display names (1-indexed; index 0 is nullptr)
 extern const char* const COMP_NAMES[ARRAY_SIZE];
@@ -25,6 +25,9 @@ int ReadChoice(int lo, int hi);
 
 // Blocks until y or n is pressed; ESC exits the application.
 bool AskYesNo();
+
+// Blocks until any key is pressed.
+void WaitKey();
 
 // Returns the count of UTF-8 continuation bytes (10xxxxxx) in s.
 // strlen(s) - Utf8ExtraBytes(s) == number of displayed characters.
@@ -61,7 +64,8 @@ void PrintFlowResults(DeviceType tip, double d_int, double d_orif,
                       double temperature, double pressure, double pressure_diff,
                       double ro, double eta, double qm,
                       const FlowResult& flow, const BwrConst& bwr,
-                      const CountryRef& ref, const double* ror_ref);
+                      const CountryRef& ref, const double* ror_ref,
+                      const double* x);
 
 // Prints the CPU profile and embedded-platform estimate table.
 void PrintCpuProfile(double t_mix_us, double t_rho_us, double t_eta_us,

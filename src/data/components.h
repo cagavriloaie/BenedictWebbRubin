@@ -1,5 +1,5 @@
-#pragma once
-#include "../common/constants.h"
+﻿#pragma once
+#include "../Common/constants.h"
 
 // BWRS equation-of-state parameters (Starling 1973).
 // Arrays indexed 1..NUM_COMPONENTS; index 0 is unused (= 0).
@@ -28,3 +28,7 @@ extern const double Z_CRITICAL_TABLE     [ARRAY_SIZE];  // critical compressibil
 
 // Ideal-gas molar heat capacity at 20 °C [J/(mol·K)]
 extern const double CP0_IDEAL[ARRAY_SIZE];
+
+// Gross (superior) calorific value per component [MJ/mol] — ISO 6976:2016
+// Inert components (He, Ar, N2, O2, CO2) = 0.
+extern const double HHV_TABLE[ARRAY_SIZE];

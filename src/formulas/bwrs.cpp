@@ -1,7 +1,7 @@
-#include "bwrs.h"
-#include "../common/constants.h"
-#include "../common/types.h"
-#include "../data/components.h"
+﻿#include "bwrs.h"
+#include "../Common/constants.h"
+#include "../Common/types.h"
+#include "../Data/components.h"
 #include <algorithm>
 #include <cmath>
 

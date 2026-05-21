@@ -106,8 +106,8 @@
 //   Absolute ± values reported for Qm [kg/s, kg/h] and Qv [ref. unit].
 //
 // PERSISTENCE
-//   Composition saved to / loaded from  bwr_comp.dat  (35 molar fractions).
-//   Device configuration saved to / loaded from  bwr_conf.dat
+//   Composition saved to / loaded from  BWRSflow_comp.dat  (35 molar fractions).
+//   Device configuration saved to / loaded from  BWRSflow_conf.dat
 //   (device type integer, D [mm], d [mm]).
 //
 // SELF-TEST
@@ -126,8 +126,8 @@
 //   • Benedict, Webb, Rubin (1940) — J. Chem. Phys. 8, 334
 // =============================================================================
 
-#include "BWR.h"
-#include "src/ui/console.h"
+#include "BWRSflow.h"
+#include "../Src/Ui/console.h"
 
 
 // Navigation flow inside main():
@@ -135,7 +135,7 @@
 //   ┌──────────────────────────────────────────────────────────────────────────┐
 //   │  OUTER LOOP  — picks a new device type each iteration                    │
 //   │                                                                          │
-//   │  Load bwr_conf.dat → reuse? ──yes──► DIAMETER LOOP (skip prompt)         │
+//   │  Load BWRSflow_conf.dat → reuse? ──yes──► DIAMETER LOOP (skip prompt)         │
 //   │         │ no                                                             │
 //   │         ▼                                                                │
 //   │  Select device type (1–9)                                                │
@@ -173,7 +173,7 @@ int main() {
   // ── 1. Gas composition ──────────────────────────────────────────────────────
   double x[ARRAY_SIZE] = {};
   PrintBanner();
-  ReadComposition(x);  // reads bwr_comp.dat or prompts the user
+  ReadComposition(x);  // reads BWRSflow_comp.dat or prompts the user
 
   // ── 2. BWRS mixture constants (computed once for the whole session) ─────────
   using Clock = std::chrono::high_resolution_clock;
@@ -438,7 +438,7 @@ int main() {
 
         // ── 7. Display results ───────────────────────────────────────────────
         PrintFlowResults(tip, d_int, d_orif, temperature, pressure, pressure_diff,
-                         ro, eta, qm, flow, bwr, ref, ror_ref);
+                         ro, eta, qm, flow, bwr, ref, ror_ref, x);
         PrintCpuProfile(t_mix_us, t_rho_us, t_eta_us, t_qm_us, iter_rho, iter_qm);
         PrintUncertainty(tip, flow, qm, ref, ror_ref);
 

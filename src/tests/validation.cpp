@@ -1,16 +1,17 @@
 ﻿#include "validation.h"
-#include "../common/constants.h"
-#include "../common/types.h"
-#include "../data/components.h"
-#include "../formulas/bwrs.h"
-#include "../formulas/viscosity.h"
-#include "../standards/iso5167.h"
-#include "../ui/console.h"
+#include "../Common/constants.h"
+#include "../Common/types.h"
+#include "../Data/components.h"
+#include "../Formulas/bwrs.h"
+#include "../Formulas/viscosity.h"
+#include "../Standards/iso5167.h"
+#include "../Ui/console.h"
 
 #ifdef _WIN32
 #  define WIN32_LEAN_AND_MEAN
-#  include <conio.h>
 #  include <io.h>
+#else
+#  include <unistd.h>
 #endif
 
 #include <cmath>
@@ -397,10 +398,15 @@ void runValidationTest() {
     double eta_n  = 11.5e-6;  // CH4 viscosity [Pa*s]
     FlowResult fr_n;
     // Suppress printError messages during negative tests
+#ifdef _WIN32
     int saved_fd = _dup(1);
-    FILE* nul_f  = nullptr;
-    fopen_s(&nul_f, "NUL", "w");
-    if (nul_f) { _dup2(_fileno(nul_f), 1); fclose(nul_f); }
+    FILE* nul_f  = std::fopen("NUL", "w");
+    if (nul_f) { _dup2(_fileno(nul_f), 1); std::fclose(nul_f); }
+#else
+    int saved_fd = dup(1);
+    FILE* nul_f  = std::fopen("/dev/null", "w");
+    if (nul_f) { dup2(fileno(nul_f), 1); std::fclose(nul_f); }
+#endif
     double qn1 = calcMassFlow(5.0,500.0,20.0, DeviceType::ORIFICE_CORNER,
                               200.0,170.0, rho_n,eta_n, &fr_n);  // β=0.85>0.80
     double qn2 = calcMassFlow(5.0,500.0,20.0, DeviceType::ORIFICE_CORNER,
@@ -420,8 +426,13 @@ void runValidationTest() {
     double qn9 = calcMassFlow(5.0,500.0,20.0, DeviceType::VENTURI_NOZZLE,
                               200.0, 50.0, rho_n,eta_n, &fr_n);  // d=50<=50mm
     std::fflush(stdout);
+#ifdef _WIN32
     _dup2(saved_fd, 1);
     _close(saved_fd);
+#else
+    dup2(saved_fd, 1);
+    close(saved_fd);
+#endif
     const char* ns = "ISO 5167";
     chk(U_BETA "=0.85 Dia-U (max 0.80) " U_RARR " Qm=0",    qn1, -0.001, 0.001, ns);
     chk("D=30mm Dia-U (min 50mm) " U_RARR " Qm=0",            qn2, -0.001, 0.001, ns);
@@ -521,6 +532,6 @@ void runValidationTest() {
     std::printf("  %sWARNING: Some tests failed " U_MDASH " check the implementation!%s\n",
                 COLOR_BOLD_RED, COLOR_RESET);
   std::printf("\n  %sPress any key to continue...%s", COLOR_BOLD_WHITE, COLOR_RESET);
-  _getch();
+  WaitKey();
   std::printf("\n");
 }
