@@ -98,7 +98,7 @@ void runValidationTest() {
         if (qm_f > 0.0) {
           double qm_est = t.alpha_nom * t.eps_nom * A_o
                         * std::sqrt(2000.0 * dp_kpa * rho_f);
-          char lbl[80];
+          char lbl[128];
           std::snprintf(lbl, sizeof(lbl),
                         "Mass flow Qm D=%g,d=%g,p=%g," U_DELTA "p=%g %s [kg/s]",
                         D_mm, d_flow_mm, p_kpa, dp_kpa, t.abv);
