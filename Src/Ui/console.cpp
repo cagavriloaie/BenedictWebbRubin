@@ -541,25 +541,49 @@ void PrintFlowResults(DeviceType tip, double d_int, double d_orif,
   row("Expansibility factor " U_EPS, "%10.6f", flow.m_epsilon, U_MDASH);
   row("Isentropic exponent k", "%10.4f", flow.m_kappa, U_MDASH);
 
-  // ── Calorific section ────────────────────────────────────────────────────
-  double hhv_mol = 0.0;
-  for (int i = 1; i <= NUM_COMPONENTS; i++) hhv_mol += x[i] * HHV_TABLE[i];
-  double m_kg_per_mol = bwr.m_molarMass * 1.0e-3;
-  double hhv_mj_kg    = hhv_mol / m_kg_per_mol;
-  double hhv_mj_m3    = hhv_mol / MOLAR_VOL_0C;
-  double rel_density  = bwr.m_molarMass / MOLAR_MASS_AIR;
-  double wobbe        = hhv_mj_m3 / std::sqrt(rel_density);
-  double qe_kw        = qm * hhv_mj_kg * KJ_PER_MJ;
-  double qe_mj_h      = qe_kw * MJ_PER_KWH;
+  // ── Calorific section (ISO 6976:2016) ────────────────────────────────────
+  double hhv_mol = 0.0, lhv_mol = 0.0;
+  for (int i = 1; i <= NUM_COMPONENTS; i++) {
+    hhv_mol += x[i] * HHV_TABLE[i];
+    lhv_mol += x[i] * LHV_TABLE[i];
+  }
+  double m_kg_per_mol    = bwr.m_molarMass * 1.0e-3;
+  double hhv_mj_kg       = hhv_mol / m_kg_per_mol;
+  double lhv_mj_kg       = lhv_mol / m_kg_per_mol;
+  double hhv_mj_m3_0c    = hhv_mol / MOLAR_VOL_0C;
+  double lhv_mj_m3_0c    = lhv_mol / MOLAR_VOL_0C;
+  double hhv_mj_m3_15c   = hhv_mol / MOLAR_VOL_15C;
+  double lhv_mj_m3_15c   = lhv_mol / MOLAR_VOL_15C;
+  double hhv_mj_m3_20c   = hhv_mol / MOLAR_VOL_20C;
+  double lhv_mj_m3_20c   = lhv_mol / MOLAR_VOL_20C;
+  double rel_density      = bwr.m_molarMass / MOLAR_MASS_AIR;
+  double sqrt_d           = std::sqrt(rel_density);
+  double wobbe_0c         = hhv_mj_m3_0c  / sqrt_d;
+  double wobbe_15c        = hhv_mj_m3_15c / sqrt_d;
+  double wobbe_20c        = hhv_mj_m3_20c / sqrt_d;
+  double qe_hhv_kw        = qm * hhv_mj_kg * KJ_PER_MJ;
+  double qe_hhv_mj_h      = qe_hhv_kw * MJ_PER_KWH;
+  double qe_lhv_kw        = qm * lhv_mj_kg * KJ_PER_MJ;
+  double qe_lhv_mj_h      = qe_lhv_kw * MJ_PER_KWH;
 
-  std::printf("\n%s  Calorific  (gross / superior, ISO 6976)%s\n", COLOR_CYAN, COLOR_RESET);
+  std::printf("\n%s  Calorific  (gross / net " U_CDOT " ISO 6976:2016)%s\n", COLOR_CYAN, COLOR_RESET);
   sep_s();
-  row("HHV mixture (per mass)",   "%10.4f", hhv_mj_kg, "MJ/kg");
-  row("HHV mixture (0" U_DEG "C vol.)", "%10.4f", hhv_mj_m3, "MJ/m" U_SUP3);
-  row("Relative density d",       "%10.6f", rel_density, U_MDASH);
-  row("Wobbe index Ws (0" U_DEG "C)",   "%10.4f", wobbe, "MJ/m" U_SUP3);
-  row("Energy flow Qe",           "%10.4f", qe_kw,  "kW");
-  row("Energy flow Qe",           "%10.2f", qe_mj_h, "MJ/h");
+  row("HHV mixture (per mass)",                   "%10.4f", hhv_mj_kg,     "MJ/kg");
+  row("LHV mixture (per mass)",                   "%10.4f", lhv_mj_kg,     "MJ/kg");
+  row("HHV mixture   0" U_DEG "C / 101.325 kPa", "%10.4f", hhv_mj_m3_0c,  "MJ/m" U_SUP3);
+  row("LHV mixture   0" U_DEG "C / 101.325 kPa", "%10.4f", lhv_mj_m3_0c,  "MJ/m" U_SUP3);
+  row("HHV mixture  15" U_DEG "C / 101.325 kPa", "%10.4f", hhv_mj_m3_15c, "MJ/m" U_SUP3);
+  row("LHV mixture  15" U_DEG "C / 101.325 kPa", "%10.4f", lhv_mj_m3_15c, "MJ/m" U_SUP3);
+  row("HHV mixture  20" U_DEG "C / 101.325 kPa", "%10.4f", hhv_mj_m3_20c, "MJ/m" U_SUP3);
+  row("LHV mixture  20" U_DEG "C / 101.325 kPa", "%10.4f", lhv_mj_m3_20c, "MJ/m" U_SUP3);
+  row("Relative density d",                       "%10.6f", rel_density,   U_MDASH);
+  row("Wobbe index Ws   0" U_DEG "C  (HHV)",      "%10.4f", wobbe_0c,      "MJ/m" U_SUP3);
+  row("Wobbe index Ws  15" U_DEG "C  (HHV)",      "%10.4f", wobbe_15c,     "MJ/m" U_SUP3);
+  row("Wobbe index Ws  20" U_DEG "C  (HHV)",      "%10.4f", wobbe_20c,     "MJ/m" U_SUP3);
+  row("Energy flow Qe  (HHV)",                    "%10.4f", qe_hhv_kw,     "kW");
+  row("Energy flow Qe  (HHV)",                    "%10.2f", qe_hhv_mj_h,   "MJ/h");
+  row("Energy flow Qe  (LHV)",                    "%10.4f", qe_lhv_kw,     "kW");
+  row("Energy flow Qe  (LHV)",                    "%10.2f", qe_lhv_mj_h,   "MJ/h");
 
   std::printf("\n");
   sep_d();

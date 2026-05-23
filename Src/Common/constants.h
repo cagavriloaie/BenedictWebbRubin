@@ -50,7 +50,10 @@ constexpr double PA_TO_MICRO_PA     = 1.0e6;    // μPa·s per Pa·s
 constexpr int    COMP_NAME_WIDTH    = 25;        // column width for component names
 
 constexpr double MOLAR_MASS_AIR     = 28.9625;  // [g/mol] — ISO 6976 dry air
-constexpr double MOLAR_VOL_0C       = 0.022414;  // [m³/mol] ideal gas at 0°C / 101.325 kPa
+constexpr double MOLAR_VOL_0C       = 0.022414;  // [m³/mol] ideal gas at  0°C / 101.325 kPa
+constexpr double MOLAR_VOL_15C      = 0.023645;  // [m³/mol] ideal gas at 15°C / 101.325 kPa
+constexpr double MOLAR_VOL_20C      = 0.024055;  // [m³/mol] ideal gas at 20°C / 101.325 kPa
+constexpr double HVAP_WATER_25C     = 0.044013;  // [MJ/mol] water vaporisation enthalpy at 25°C (ISO 6976:2016)
 constexpr double KJ_PER_MJ          = 1000.0;
 constexpr double MJ_PER_KWH         = 3.6;
 

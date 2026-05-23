@@ -32,3 +32,8 @@ extern const double CP0_IDEAL[ARRAY_SIZE];
 // Gross (superior) calorific value per component [MJ/mol] — ISO 6976:2016
 // Inert components (He, Ar, N2, O2, CO2) = 0.
 extern const double HHV_TABLE[ARRAY_SIZE];
+
+// Net (inferior) calorific value per component [MJ/mol] — ISO 6976:2016
+// LHV = HHV − n_H₂O × HVAP_WATER_25C (0.044013 MJ/mol).
+// Inert components = 0.
+extern const double LHV_TABLE[ARRAY_SIZE];
